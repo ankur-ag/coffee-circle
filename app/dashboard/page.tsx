@@ -1,0 +1,186 @@
+import { MapPin, Clock, Calendar, Users, Star } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import Image from "next/image";
+import { format } from "date-fns";
+import { getUserBooking } from "@/lib/data";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
+
+import { cancelBooking } from "@/app/actions";
+
+export const runtime = "edge";
+
+export default async function DashboardPage() {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+        redirect("/book");
+    }
+
+    const userId = session.user.id;
+    const booking = await getUserBooking(userId);
+
+    if (!booking) {
+        return (
+            <main className="container mx-auto max-w-4xl px-4 py-12 md:px-6 text-center">
+                <h1 className="text-3xl font-bold">No Upcoming Meetups</h1>
+                <p className="mt-4 text-muted-foreground">You haven't booked any coffee meetups yet.</p>
+                <Button className="mt-8" asChild>
+                    <a href="/book">Book a Spot</a>
+                </Button>
+            </main>
+        );
+    }
+
+    const { meetup, attendees } = booking;
+    const location = meetup.location;
+    const isRevealed = !!location;
+
+    return (
+        <main className="container mx-auto max-w-4xl px-4 py-12 md:px-6">
+            <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Your Ticket</h1>
+                    <p className="text-muted-foreground">You're all set for this weekend!</p>
+                </div>
+                <Badge variant="secondary" className="w-fit px-4 py-1 text-base">
+                    Confirmed
+                </Badge>
+            </div>
+
+            <div className="grid gap-8 md:grid-cols-[2fr_1fr]">
+                <div className="space-y-6">
+                    {/* Location Card */}
+                    <Card className="overflow-hidden border-primary/20 shadow-lg">
+                        <div className="relative h-48 w-full bg-muted">
+                            {isRevealed && location ? (
+                                <Image
+                                    src={location.image}
+                                    alt={location.name}
+                                    fill
+                                    className="object-cover"
+                                />
+                            ) : (
+                                <div className="flex h-full items-center justify-center bg-secondary/50">
+                                    <MapPin className="h-12 w-12 text-muted-foreground opacity-20" />
+                                </div>
+                            )}
+                            <div className="absolute right-4 top-4 rounded-full bg-background/90 px-3 py-1 text-xs font-medium backdrop-blur">
+                                {isRevealed ? "Location Revealed" : "Reveals Saturday 9AM"}
+                            </div>
+                        </div>
+                        <CardHeader>
+                            <CardTitle className="text-2xl">{isRevealed && location ? location.name : "Mystery Location"}</CardTitle>
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                                <MapPin className="h-4 w-4" />
+                                <span>{isRevealed && location ? location.location : "Taipei City (TBA)"}</span>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            {isRevealed && location ? (
+                                <div className="space-y-4">
+                                    <p className="text-muted-foreground">{location.description}</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {JSON.parse(location.features).map((feature: string) => (
+                                            <Badge key={feature} variant="outline">
+                                                {feature}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                    <div className="flex items-center gap-1 text-amber-500">
+                                        <Star className="h-4 w-4 fill-current" />
+                                        <span className="font-medium">{location.rating / 10}</span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <p className="text-muted-foreground">
+                                    We're curating the perfect spot for your group. Check back on Saturday morning!
+                                </p>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Group Card */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Users className="h-5 w-5" />
+                                Your Circle
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-4">
+                                {attendees.filter((u: typeof attendees[0]) => u.id !== userId).map((user: typeof attendees[0]) => (
+                                    <div key={user.id} className="flex items-center gap-4 rounded-lg border p-3 transition-colors hover:bg-secondary/50">
+                                        <div className="relative h-12 w-12 overflow-hidden rounded-full bg-muted">
+                                            <Image src={user.avatar || ""} alt={user.name} fill className="object-cover" />
+                                        </div>
+                                        <div>
+                                            <p className="font-medium">{user.name}</p>
+                                            <p className="text-sm text-muted-foreground">{user.bio}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                                <div className="flex items-center gap-4 rounded-lg border border-dashed p-3">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary text-muted-foreground">
+                                        You
+                                    </div>
+                                    <div>
+                                        <p className="font-medium">That's you!</p>
+                                        <p className="text-sm text-muted-foreground">Ready to mingle</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Sidebar Details */}
+                <div className="space-y-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-lg">Time & Date</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex items-center gap-3">
+                                <Calendar className="h-5 w-5 text-primary" />
+                                <div>
+                                    <p className="font-medium">{format(new Date(meetup.date), "EEEE, MMMM d")}</p>
+                                    <p className="text-sm text-muted-foreground">2025</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Clock className="h-5 w-5 text-primary" />
+                                <div>
+                                    <p className="font-medium">{meetup.time}</p>
+                                    <p className="text-sm text-muted-foreground">Duration: ~2 hours</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="bg-primary text-primary-foreground">
+                        <CardHeader>
+                            <CardTitle className="text-lg">Tips</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <ul className="list-inside list-disc space-y-2 text-sm opacity-90">
+                                <li>Arrive 5 minutes early</li>
+                                <li>Be open to new conversations</li>
+                                <li>Order a drink to support the venue</li>
+                            </ul>
+                        </CardContent>
+                    </Card>
+
+                    <form action={cancelBooking.bind(null, booking.id)}>
+                        <Button variant="outline" className="w-full" type="submit">
+                            Cancel Booking
+                        </Button>
+                    </form>
+                </div>
+            </div>
+        </main>
+    );
+}

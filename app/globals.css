@@ -1,26 +1,87 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@theme {
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-outfit);
 
-@theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  
+  --color-border: var(--border);
+}
+
+:root {
+  /* Light Mode (Warm & Premium) */
+  --background: #FAFAF9; /* Stone 50 */
+  --foreground: #1C1917; /* Stone 900 */
+  
+  --primary: #D97706; /* Amber 600 */
+  --primary-foreground: #FFFFFF;
+  
+  --secondary: #E7E5E4; /* Stone 200 */
+  --secondary-foreground: #1C1917;
+  
+  --accent: #F59E0B; /* Amber 500 */
+  --accent-foreground: #FFFFFF;
+  
+  --muted: #F5F5F4; /* Stone 100 */
+  --muted-foreground: #78716C; /* Stone 500 */
+  
+  --card: #FFFFFF;
+  --card-foreground: #1C1917;
+  
+  --border: #E7E5E4; /* Stone 200 */
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Dark Mode (Deep Espresso) */
+    --background: #0C0A09; /* Stone 950 */
+    --foreground: #FAFAF9; /* Stone 50 */
+    
+    --primary: #D97706; /* Amber 600 */
+    --primary-foreground: #FFFFFF;
+    
+    --secondary: #292524; /* Stone 800 */
+    --secondary-foreground: #FAFAF9;
+    
+    --accent: #B45309; /* Amber 700 */
+    --accent-foreground: #FFFFFF;
+    
+    --muted: #1C1917; /* Stone 900 */
+    --muted-foreground: #A8A29E; /* Stone 400 */
+    
+    --card: #1C1917; /* Stone 900 */
+    --card-foreground: #FAFAF9;
+    
+    --border: #292524; /* Stone 800 */
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
