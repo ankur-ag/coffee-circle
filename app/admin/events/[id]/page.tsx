@@ -8,7 +8,7 @@ export const runtime = "edge";
 
 async function getMeetup(id: string) {
     const db = getDb();
-    const meetup = await db
+    const [meetup] = await db
         .select({
             id: meetups.id,
             date: meetups.date,
@@ -19,14 +19,18 @@ async function getMeetup(id: string) {
         })
         .from(meetups)
         .where(eq(meetups.id, id))
-        .get();
+        .limit(1);
+
+    if (!meetup) {
+        notFound();
+    }
 
     return meetup;
 }
 
 async function getLocations() {
     const db = getDb();
-    return await db.select().from(coffeeShops).all();
+    return await db.select().from(coffeeShops);
 }
 
 export default async function EditEventPage({ params }: { params: Promise<{ id: string }> }) {

@@ -8,11 +8,11 @@ export const runtime = "edge";
 
 async function getLocation(id: string) {
     const db = getDb();
-    const location = await db
+    const [location] = await db
         .select()
         .from(coffeeShops)
         .where(eq(coffeeShops.id, id))
-        .get();
+        .limit(1);
 
     return location;
 }

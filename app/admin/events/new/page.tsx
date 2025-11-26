@@ -6,7 +6,7 @@ export const runtime = "edge";
 
 async function getLocations() {
     const db = getDb();
-    return await db.select().from(coffeeShops).all();
+    return await db.select().from(coffeeShops);
 }
 
 export default async function NewEventPage() {

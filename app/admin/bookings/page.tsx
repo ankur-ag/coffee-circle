@@ -62,7 +62,7 @@ async function getBookings(locationId?: string) {
 
 async function getLocations() {
     const db = getDb();
-    return await db.select({ id: coffeeShops.id, name: coffeeShops.name, city: coffeeShops.city }).from(coffeeShops).all();
+    return await db.select({ id: coffeeShops.id, name: coffeeShops.name, city: coffeeShops.city }).from(coffeeShops);
 }
 
 export default async function AdminBookingsPage({ searchParams }: { searchParams: Promise<{ locationId?: string }> }) {

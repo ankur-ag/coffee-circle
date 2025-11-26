@@ -6,7 +6,7 @@ export const runtime = "edge";
 
 async function getLocations() {
     const db = getDb();
-    const locations = await db.select().from(coffeeShops).all();
+    const locations = await db.select().from(coffeeShops);
     return locations;
 }
 

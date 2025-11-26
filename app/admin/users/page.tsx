@@ -6,7 +6,7 @@ export const runtime = "edge";
 
 async function getUsers() {
     const db = getDb();
-    const allUsers = await db.select().from(users).all();
+    const allUsers = await db.select().from(users);
     return allUsers;
 }
 
@@ -50,8 +50,8 @@ export default async function AdminUsersPage() {
                                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                                     <span
                                         className={`px-2 py-1 rounded text-xs ${user.role === "admin"
-                                                ? "bg-purple-100 text-purple-800"
-                                                : "bg-gray-100 text-gray-800"
+                                            ? "bg-purple-100 text-purple-800"
+                                            : "bg-gray-100 text-gray-800"
                                             }`}
                                     >
                                         {user.role || "user"}
