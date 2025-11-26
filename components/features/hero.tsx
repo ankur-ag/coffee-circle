@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
 
 export function Hero() {
     return (
@@ -25,7 +24,7 @@ export function Hero() {
                 <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
                     <Button size="lg" className="h-12 px-8 text-base" asChild>
                         <Link href="/book">
-                            Join the Circle <ArrowRight className="ml-2 h-4 w-4" />
+                            Join the Circle
                         </Link>
                     </Button>
                     <Button size="lg" variant="outline" className="h-12 px-8 text-base">

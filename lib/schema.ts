@@ -1,19 +1,19 @@
-import { sqliteTable, text, integer, primaryKey } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, primaryKey, timestamp } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
-export const users = sqliteTable("users", {
+export const users = pgTable("users", {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     name: text("name"),
     email: text("email").notNull().unique(),
-    emailVerified: integer("emailVerified", { mode: "timestamp_ms" }),
+    emailVerified: timestamp("emailVerified", { mode: "date" }),
     image: text("image"),
     bio: text("bio"),
     languagePreference: text("language_preference").default("en"), // en, zh, etc.
     role: text("role").default("user"), // user, admin
-    createdAt: integer("created_at", { mode: "timestamp" }).default(sql`(strftime('%s', 'now'))`),
+    createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const accounts = sqliteTable(
+export const accounts = pgTable(
     "account",
     {
         userId: text("userId")
@@ -37,20 +37,20 @@ export const accounts = sqliteTable(
     })
 );
 
-export const sessions = sqliteTable("session", {
+export const sessions = pgTable("session", {
     sessionToken: text("sessionToken").primaryKey(),
     userId: text("userId")
         .notNull()
         .references(() => users.id, { onDelete: "cascade" }),
-    expires: integer("expires", { mode: "timestamp_ms" }).notNull(),
+    expires: timestamp("expires", { mode: "date" }).notNull(),
 });
 
-export const verificationTokens = sqliteTable(
+export const verificationTokens = pgTable(
     "verificationToken",
     {
         identifier: text("identifier").notNull(),
         token: text("token").notNull(),
-        expires: integer("expires", { mode: "timestamp_ms" }).notNull(),
+        expires: timestamp("expires", { mode: "date" }).notNull(),
     },
     (verificationToken) => ({
         compositePk: primaryKey({
@@ -59,33 +59,33 @@ export const verificationTokens = sqliteTable(
     })
 );
 
-export const coffeeShops = sqliteTable("coffee_shops", {
+export const coffeeShops = pgTable("coffee_shops", {
     id: text("id").primaryKey(),
     name: text("name").notNull(),
     location: text("location").notNull(),
-    city: text("city").notNull().default("Taipei"), // Default to Taipei for existing records
+    city: text("city").notNull().default("Taipei"),
     description: text("description").notNull(),
     image: text("image").notNull(),
-    rating: integer("rating").notNull(), // Store as integer (e.g. 48 for 4.8) or real
+    rating: integer("rating").notNull(),
     features: text("features").notNull(), // JSON string
 });
 
-export const meetups = sqliteTable("meetups", {
+export const meetups = pgTable("meetups", {
     id: text("id").primaryKey(),
     date: text("date").notNull(), // ISO date string
     time: text("time").notNull(),
     locationId: text("location_id").references(() => coffeeShops.id),
-    status: text("status").notNull().default("open"), // open, full, past
-    language: text("language").notNull().default("en"), // en, zh, etc.
+    status: text("status").notNull().default("open"),
+    language: text("language").notNull().default("en"),
 });
 
-export const bookings = sqliteTable("bookings", {
+export const bookings = pgTable("bookings", {
     id: text("id").primaryKey(),
     userId: text("user_id").notNull().references(() => users.id),
     meetupId: text("meetup_id").notNull().references(() => meetups.id),
-    vibe: text("vibe").notNull(), // quiet, social
+    vibe: text("vibe").notNull(),
     status: text("status").notNull().default("confirmed"),
-    createdAt: integer("created_at", { mode: "timestamp" }).default(sql`(strftime('%s', 'now'))`),
+    createdAt: timestamp("created_at").defaultNow(),
 });
 
 import { relations } from "drizzle-orm";
