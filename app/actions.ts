@@ -188,16 +188,28 @@ export async function updateUserProfile(formData: FormData) {
     }
 
     const languagePreference = formData.get("languagePreference") as string;
-
-    if (!languagePreference) {
-        throw new Error("Missing language preference");
-    }
+    const country = formData.get("country") as string;
 
     const db = getDb();
 
     try {
+        // Build update object with only provided fields
+        const updateData: { languagePreference?: string; country?: string | null } = {};
+
+        if (languagePreference) {
+            updateData.languagePreference = languagePreference;
+        }
+
+        if (country !== undefined) {
+            updateData.country = country || null; // Allow clearing the field
+        }
+
+        if (Object.keys(updateData).length === 0) {
+            throw new Error("No fields to update");
+        }
+
         await db.update(users)
-            .set({ languagePreference })
+            .set(updateData)
             .where(eq(users.id, session.user.id));
 
         console.log("Profile updated successfully");

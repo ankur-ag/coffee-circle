@@ -51,6 +51,32 @@ export default async function ProfilePage() {
                     </CardContent>
                 </Card>
 
+                {/* Country/Ethnicity Card */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Country of Origin</CardTitle>
+                        <CardDescription>Share where you're from to connect with others</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <form action={updateUserProfile} className="space-y-4">
+                            <div className="space-y-2">
+                                <label htmlFor="country" className="text-sm font-medium">Country</label>
+                                <input
+                                    type="text"
+                                    id="country"
+                                    name="country"
+                                    defaultValue={user?.country || ""}
+                                    placeholder="e.g., United States, Taiwan, Japan"
+                                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                                />
+                            </div>
+                            <Button type="submit" className="w-full">
+                                Save Country
+                            </Button>
+                        </form>
+                    </CardContent>
+                </Card>
+
                 {/* Language Preference Card */}
                 <Card>
                     <CardHeader>

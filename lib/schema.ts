@@ -8,6 +8,7 @@ export const users = pgTable("users", {
     emailVerified: timestamp("emailVerified", { mode: "date" }),
     image: text("image"),
     bio: text("bio"),
+    country: text("country"), // Country of origin or ethnicity
     languagePreference: text("language_preference").default("en"), // en, zh, etc.
     role: text("role").default("user"), // user, admin
     createdAt: timestamp("created_at").defaultNow(),
