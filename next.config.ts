@@ -9,8 +9,8 @@ if (process.env.NODE_ENV === "development") {
 
 const nextConfig: NextConfig = {
   // Redirect root to /book
-  // Add other config options here if needed
-  // Add other config options here if needed
+  productionBrowserSourceMaps: false,
+  compress: true,
 };
 
 export default nextConfig;
