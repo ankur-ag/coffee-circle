@@ -24,6 +24,11 @@ export async function Header() {
                             <Link href="/profile">
                                 <Button variant="ghost">Profile</Button>
                             </Link>
+                            {session.user.role === "admin" && (
+                                <Link href="/admin">
+                                    <Button variant="ghost">Admin</Button>
+                                </Link>
+                            )}
                             <div className="flex items-center gap-2">
                                 <Avatar className="h-8 w-8">
                                     <AvatarImage src={session.user.image || ""} alt={session.user.name || ""} />
