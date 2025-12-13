@@ -89,6 +89,15 @@ export const bookings = pgTable("bookings", {
     createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const feedback = pgTable("feedback", {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    bookingId: text("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    rating: integer("rating").notNull(), // 1-5 stars
+    comment: text("comment"),
+    createdAt: timestamp("created_at").defaultNow(),
+});
+
 import { relations } from "drizzle-orm";
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -107,7 +116,7 @@ export const meetupsRelations = relations(meetups, ({ one, many }) => ({
     bookings: many(bookings),
 }));
 
-export const bookingsRelations = relations(bookings, ({ one }) => ({
+export const bookingsRelations = relations(bookings, ({ one, many }) => ({
     user: one(users, {
         fields: [bookings.userId],
         references: [users.id],
@@ -115,5 +124,17 @@ export const bookingsRelations = relations(bookings, ({ one }) => ({
     meetup: one(meetups, {
         fields: [bookings.meetupId],
         references: [meetups.id],
+    }),
+    feedback: many(feedback),
+}));
+
+export const feedbackRelations = relations(feedback, ({ one }) => ({
+    booking: one(bookings, {
+        fields: [feedback.bookingId],
+        references: [bookings.id],
+    }),
+    user: one(users, {
+        fields: [feedback.userId],
+        references: [users.id],
     }),
 }));

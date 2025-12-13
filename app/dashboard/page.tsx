@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import { format } from "date-fns";
-import { getUserBooking } from "@/lib/data";
+import { getUserBooking, getUnratedPastBooking } from "@/lib/data";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 
@@ -20,6 +20,13 @@ export default async function DashboardPage() {
     }
 
     const userId = session.user.id;
+    
+    // Check if there's an unrated past event - redirect to feedback if so
+    const unratedBookingId = await getUnratedPastBooking(userId);
+    if (unratedBookingId) {
+        redirect(`/past-events/${unratedBookingId}/feedback`);
+    }
+    
     const booking = await getUserBooking(userId);
 
     if (!booking) {

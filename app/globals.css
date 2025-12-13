@@ -22,6 +22,9 @@
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  
   --color-border: var(--border);
 }
 
@@ -44,6 +47,9 @@
   
   --card: #FFFFFF;
   --card-foreground: #1C1917;
+  
+  --popover: #FFFFFF;
+  --popover-foreground: #1C1917;
   
   --border: #E7E5E4; /* Stone 200 */
 }
@@ -68,6 +74,9 @@
     
     --card: #1C1917; /* Stone 900 */
     --card-foreground: #FAFAF9;
+    
+    --popover: #1C1917; /* Stone 900 */
+    --popover-foreground: #FAFAF9;
     
     --border: #292524; /* Stone 800 */
   }

@@ -2,8 +2,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Coffee } from "lucide-react";
 import { auth } from "@/auth";
-import { SignIn, SignOut } from "../auth-buttons";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SignIn } from "../auth-buttons";
+import { AccountDropdown } from "../account-dropdown";
 
 export async function Header() {
     const session = await auth();
@@ -26,16 +26,11 @@ export async function Header() {
                                     <Button variant="ghost">Admin</Button>
                                 </Link>
                             )}
-                            <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                                <Avatar className="h-8 w-8">
-                                    <AvatarImage src={session.user.image || ""} alt={session.user.name || ""} />
-                                    <AvatarFallback>{session.user.name?.[0]}</AvatarFallback>
-                                </Avatar>
-                                <span className="text-sm font-medium hidden sm:inline-block">
-                                    {session.user.name}
-                                </span>
-                            </Link>
-                            <SignOut />
+                            <AccountDropdown
+                                userName={session.user.name}
+                                userImage={session.user.image}
+                                userInitial={session.user.name?.[0]}
+                            />
                         </div>
                     ) : (
                         <SignIn />

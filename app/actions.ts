@@ -1,8 +1,9 @@
 "use server";
 
 import { getDb } from "@/lib/db";
-import { bookings, users } from "@/lib/schema";
+import { bookings, users, feedback, meetups } from "@/lib/schema";
 import { eq } from "drizzle-orm";
+import { isBookingActive, isMeetupInFuture } from "@/lib/data";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -30,8 +31,9 @@ export async function bookMeetup(formData: FormData) {
     const db = getDb();
 
     try {
-        // Check if user already has ANY active booking
-        const existingActiveBooking = await db.query.bookings.findFirst({
+        // Check if user already has ANY active (upcoming) booking
+        // Get all confirmed bookings for the user
+        const allConfirmedBookings = await db.query.bookings.findMany({
             where: (bookings, { and, eq }) => and(
                 eq(bookings.userId, userId),
                 eq(bookings.status, "confirmed")
@@ -43,7 +45,10 @@ export async function bookMeetup(formData: FormData) {
                     },
                 },
             },
-        });
+        }) as any[];
+
+        // Find the first active (upcoming) booking
+        const existingActiveBooking = allConfirmedBookings.find((booking: any) => isBookingActive(booking));
 
         if (existingActiveBooking) {
             console.log("User already has an active booking");
@@ -51,6 +56,22 @@ export async function bookMeetup(formData: FormData) {
             throw new Error(
                 `You already have an active reservation for ${existingActiveBooking.meetup?.date} at ${existingActiveBooking.meetup?.time}. Please cancel it first if you'd like to book a different meetup.`
             );
+        }
+
+        // Verify the meetup exists and is in the future
+        const meetup = await db.query.meetups.findFirst({
+            where: eq(meetups.id, meetupId),
+            with: {
+                location: true,
+            },
+        }) as any;
+
+        if (!meetup) {
+            throw new Error("Meetup not found");
+        }
+
+        if (!isMeetupInFuture(meetup)) {
+            throw new Error("Cannot book a past event. Please select an upcoming event.");
         }
 
         console.log("Attempting insert...");
@@ -66,12 +87,6 @@ export async function bookMeetup(formData: FormData) {
 
         // Send confirmation email (non-blocking)
         try {
-            const meetup = await db.query.meetups.findFirst({
-                where: (meetups, { eq }) => eq(meetups.id, meetupId),
-                with: {
-                    location: true,
-                },
-            });
 
             if (meetup && session.user?.email && session.user?.name) {
                 const { sendBookingConfirmation } = await import("@/lib/email");
@@ -220,4 +235,69 @@ export async function updateUserProfile(formData: FormData) {
 
     revalidatePath("/profile");
     redirect("/profile");
+}
+
+export async function submitFeedback(formData: FormData) {
+    const session = await auth();
+    console.log("Submitting feedback");
+
+    if (!session?.user?.id) {
+        throw new Error("Unauthorized");
+    }
+
+    const bookingId = formData.get("bookingId") as string;
+    const rating = parseInt(formData.get("rating") as string);
+    const comment = formData.get("comment") as string;
+
+    if (!bookingId || !rating || rating < 1 || rating > 5) {
+        throw new Error("Missing required fields or invalid rating");
+    }
+
+    const db = getDb();
+
+    try {
+        // Verify the booking belongs to the user
+        const booking = await db.query.bookings.findFirst({
+            where: eq(bookings.id, bookingId),
+        }) as any;
+
+        if (!booking || booking.userId !== session.user.id) {
+            throw new Error("Unauthorized: This booking does not belong to you");
+        }
+
+        // Check if feedback already exists
+        const existingFeedback = await db.query.feedback.findFirst({
+            where: eq(feedback.bookingId, bookingId),
+        }) as any;
+
+        if (existingFeedback) {
+            // Update existing feedback
+            await db.update(feedback)
+                .set({
+                    rating,
+                    comment: comment || null,
+                })
+                .where(eq(feedback.id, existingFeedback.id));
+            console.log("Feedback updated successfully");
+        } else {
+            // Create new feedback
+            await db.insert(feedback).values({
+                id: crypto.randomUUID(),
+                bookingId,
+                userId: session.user.id,
+                rating,
+                comment: comment || null,
+            });
+            console.log("Feedback submitted successfully");
+        }
+    } catch (error) {
+        console.error("Failed to submit feedback:", error);
+        throw new Error(`Failed to submit feedback: ${error instanceof Error ? error.message : String(error)}`);
+    }
+
+    revalidatePath("/past-events");
+    revalidatePath(`/past-events/${bookingId}/feedback`);
+    revalidatePath("/dashboard");
+    
+    return { success: true, bookingId };
 }
