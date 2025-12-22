@@ -54,6 +54,12 @@ export default async function AdminLayout({
                         Users
                     </Link>
                     <Link
+                        href="/admin/feedback"
+                        className="block px-4 py-2 rounded hover:bg-gray-800 transition"
+                    >
+                        Feedback & Ratings
+                    </Link>
+                    <Link
                         href="/"
                         className="block px-4 py-2 rounded hover:bg-gray-800 transition mt-8 text-gray-400"
                     >

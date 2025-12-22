@@ -1,0 +1,1 @@
+ALTER TABLE "bookings" ADD COLUMN "has_plus_one" text DEFAULT 'false';

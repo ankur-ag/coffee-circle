@@ -75,21 +75,69 @@ export async function getUpcomingMeetups() {
     // Filter to only include future meetups
     const futureMeetups = allMeetups.filter((meetup: any) => isMeetupInFuture(meetup));
 
-    // For each meetup, count attendees
+    // Sort by date (ascending - earliest first) and take only the 2 most recent
+    const sortedMeetups = futureMeetups.sort((a: any, b: any) => {
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        return dateA - dateB; // Sort ascending (earliest first)
+    });
+
+    const twoMostRecent = sortedMeetups.slice(0, 2);
+
+    // For each meetup, count confirmed attendees (including +1s)
     const meetupsWithAttendees = await Promise.all(
-        futureMeetups.map(async (meetup: any) => {
-            const attendeeCount = await db.query.bookings.findMany({
-                where: eq(bookings.meetupId, meetup.id),
-            });
+        twoMostRecent.map(async (meetup: any) => {
+            const confirmedBookings = await db.query.bookings.findMany({
+                where: (bookings, { and, eq }) => and(
+                    eq(bookings.meetupId, meetup.id),
+                    eq(bookings.status, "confirmed")
+                ),
+            }) as any[];
+
+            // Count total attendees: each booking counts as 1, +1 bookings count as 2
+            // Note: Cancelled bookings are automatically excluded since we only query confirmed bookings
+            // When a booking with +1 is cancelled, it reduces the headcount by 2 automatically
+            const totalAttendees = confirmedBookings.reduce((count: number, booking: any) => {
+                const hasPlusOne = booking.hasPlusOne === "true" || booking.hasPlusOne === true;
+                return count + (hasPlusOne ? 2 : 1);
+            }, 0);
 
             return {
                 ...meetup,
-                attendees: attendeeCount || [],
+                attendees: confirmedBookings || [],
+                attendeeCount: totalAttendees,
+                isFull: totalAttendees >= 6,
             };
         })
     );
 
     return meetupsWithAttendees;
+}
+
+/**
+ * Check if a meetup is full (has 6 or more confirmed attendees, including +1s)
+ */
+export async function isMeetupFull(meetupId: string, includePlusOne: boolean = false): Promise<boolean> {
+    const db = getDb();
+    const confirmedBookings = await db.query.bookings.findMany({
+        where: (bookings, { and, eq }) => and(
+            eq(bookings.meetupId, meetupId),
+            eq(bookings.status, "confirmed")
+        ),
+    }) as any[];
+
+    // Count total attendees: each booking counts as 1, +1 bookings count as 2
+    // Note: Cancelled bookings are automatically excluded since we only query confirmed bookings
+    // When a booking with +1 is cancelled, it reduces the headcount by 2 automatically
+    const totalAttendees = confirmedBookings.reduce((count: number, booking: any) => {
+        const hasPlusOne = booking.hasPlusOne === "true" || booking.hasPlusOne === true;
+        return count + (hasPlusOne ? 2 : 1);
+    }, 0);
+
+    // If checking with a potential +1, add 1 more to the count
+    const checkCount = includePlusOne ? totalAttendees + 1 : totalAttendees;
+    
+    return checkCount >= 6;
 }
 
 export async function getPastBookings(userId: string) {
@@ -184,4 +232,51 @@ export async function getUnratedPastBooking(userId: string): Promise<string | nu
     }
     
     return null;
+}
+
+/**
+ * Get all events happening tomorrow with their confirmed bookings and user details
+ */
+export async function getTomorrowEventsWithAttendees() {
+    const db = getDb();
+
+    // Calculate tomorrow's date
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    
+    const tomorrowDateStr = tomorrow.toISOString().split("T")[0];
+
+    // Get all meetups and filter for tomorrow's date
+    // Note: We get all meetups and filter because date is stored as text
+    const allMeetups = await db.query.meetups.findMany({
+        with: {
+            location: true,
+        }
+    }) as any[];
+
+    // Filter for tomorrow's date
+    const tomorrowMeetups = allMeetups.filter((meetup: any) => meetup.date === tomorrowDateStr);
+
+    // For each meetup, get confirmed bookings with user details
+    const meetupsWithBookings = await Promise.all(
+        tomorrowMeetups.map(async (meetup: any) => {
+            const confirmedBookings = await db.query.bookings.findMany({
+                where: (bookings, { and, eq }) => and(
+                    eq(bookings.meetupId, meetup.id),
+                    eq(bookings.status, "confirmed")
+                ),
+                with: {
+                    user: true,
+                }
+            }) as any[];
+
+            return {
+                ...meetup,
+                bookings: confirmedBookings,
+            };
+        })
+    );
+
+    return meetupsWithBookings;
 }

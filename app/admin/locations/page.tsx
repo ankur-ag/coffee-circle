@@ -6,8 +6,28 @@ export const runtime = "edge";
 
 async function getLocations() {
     const db = getDb();
-    const locations = await db.select().from(coffeeShops);
-    return locations;
+    try {
+        // Try to select all columns including googleMapsLink
+        const locations = await db.select().from(coffeeShops);
+        return locations;
+    } catch (error) {
+        // If column doesn't exist yet, select only existing columns
+        // This is a temporary fallback until migration is run
+        console.warn("google_maps_link column not found, selecting without it:", error);
+        const locations = await db
+            .select({
+                id: coffeeShops.id,
+                name: coffeeShops.name,
+                location: coffeeShops.location,
+                city: coffeeShops.city,
+                description: coffeeShops.description,
+                image: coffeeShops.image,
+                rating: coffeeShops.rating,
+                features: coffeeShops.features,
+            })
+            .from(coffeeShops);
+        return locations.map((loc) => ({ ...loc, googleMapsLink: null }));
+    }
 }
 
 export default async function AdminLocationsPage() {

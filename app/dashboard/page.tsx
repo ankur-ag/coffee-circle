@@ -79,10 +79,34 @@ export default async function DashboardPage() {
                             </div>
                         </div>
                         <CardHeader>
-                            <CardTitle className="text-2xl">{isRevealed && location ? location.name : "Mystery Location"}</CardTitle>
+                            <CardTitle className="text-2xl">
+                                {isRevealed && location ? (
+                                    <a
+                                        href={(location as any).googleMapsLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${location.name} ${location.location} ${location.city}`)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="hover:text-primary transition-colors"
+                                    >
+                                        {location.name}
+                                    </a>
+                                ) : (
+                                    "Mystery Location"
+                                )}
+                            </CardTitle>
                             <div className="flex items-center gap-2 text-muted-foreground">
                                 <MapPin className="h-4 w-4" />
-                                <span>{isRevealed && location ? location.location : "Taipei City (TBA)"}</span>
+                                {isRevealed && location ? (
+                                    <a
+                                        href={(location as any).googleMapsLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${location.name} ${location.location} ${location.city}`)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="hover:text-primary transition-colors underline"
+                                    >
+                                        {location.location}
+                                    </a>
+                                ) : (
+                                    <span>Taipei City (TBA)</span>
+                                )}
                             </div>
                         </CardHeader>
                         <CardContent>
@@ -119,17 +143,30 @@ export default async function DashboardPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
-                                {attendees.filter((u: typeof attendees[0]) => u.id !== userId).map((user: typeof attendees[0]) => (
-                                    <div key={user.id} className="flex items-center gap-4 rounded-lg border p-3 transition-colors hover:bg-secondary/50">
-                                        <div className="relative h-12 w-12 overflow-hidden rounded-full bg-muted">
-                                            <Image src={user.avatar || ""} alt={user.name} fill className="object-cover" />
+                                {attendees.filter((u: typeof attendees[0]) => u.id !== userId).map((user: typeof attendees[0]) => {
+                                    // Extract first name only
+                                    const firstName = user.name?.split(" ")[0] || user.name || "Guest";
+                                    const userImage = user.avatar || user.image;
+                                    const userInitial = firstName[0]?.toUpperCase() || "?";
+                                    
+                                    return (
+                                        <div key={user.id} className="flex items-center gap-4 rounded-lg border p-3 transition-colors hover:bg-secondary/50">
+                                            <div className="relative h-12 w-12 overflow-hidden rounded-full bg-muted">
+                                                {userImage ? (
+                                                    <Image src={userImage} alt={firstName} fill className="object-cover" />
+                                                ) : (
+                                                    <div className="flex h-full w-full items-center justify-center bg-gray-300 text-gray-600 font-medium text-lg">
+                                                        {userInitial}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <p className="font-medium">{firstName}</p>
+                                                <p className="text-sm text-muted-foreground">{user.bio}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="font-medium">{user.name}</p>
-                                            <p className="text-sm text-muted-foreground">{user.bio}</p>
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                                 <div className="flex items-center gap-4 rounded-lg border border-dashed p-3">
                                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary text-muted-foreground">
                                         You

@@ -9,6 +9,7 @@ migrations=(
   "migrations/004_fix_table_names.sql"
   "migrations/005_add_email_verified.sql"
   "migrations/006_admin_schema.sql"
+  "migrations/007_add_google_maps_link.sql"
 )
 
 # Run each migration

@@ -91,3 +91,4 @@ addWeekendEvents().catch((err) => {
     console.error("Failed to add weekend events:", err);
     process.exit(1);
 });
+

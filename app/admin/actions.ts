@@ -103,6 +103,7 @@ export async function createCoffeeShop(formData: FormData) {
     const image = formData.get("image") as string;
     const rating = parseInt(formData.get("rating") as string);
     const features = formData.get("features") as string;
+    const googleMapsLink = formData.get("googleMapsLink") as string | null;
 
     if (!name || !location || !city || !description || !image || !rating || !features) {
         throw new Error("Missing required fields");
@@ -118,6 +119,7 @@ export async function createCoffeeShop(formData: FormData) {
         image,
         rating,
         features,
+        googleMapsLink: googleMapsLink || null,
     });
 
     revalidatePath("/admin/locations");
@@ -139,6 +141,7 @@ export async function updateCoffeeShop(formData: FormData) {
     const image = formData.get("image") as string;
     const rating = parseInt(formData.get("rating") as string);
     const features = formData.get("features") as string;
+    const googleMapsLink = formData.get("googleMapsLink") as string | null;
 
     if (!id || !name || !location || !city || !description || !image || !rating || !features) {
         throw new Error("Missing required fields");
@@ -153,6 +156,7 @@ export async function updateCoffeeShop(formData: FormData) {
         image,
         rating,
         features,
+        googleMapsLink: googleMapsLink || null,
     }).where(eq(coffeeShops.id, id));
 
     revalidatePath("/admin/locations");
@@ -181,10 +185,17 @@ export async function cancelBookingAdmin(bookingId: string) {
         },
     });
 
+    // Note: When a booking with +1 is cancelled, the headcount automatically decreases by 2
+    // because the capacity counting only includes confirmed bookings
+    const hadPlusOne = booking?.hasPlusOne === "true";
+
+    // Update booking status to cancelled
     await db
         .update(bookings)
         .set({ status: "cancelled" })
         .where(eq(bookings.id, bookingId));
+
+    console.log(`Booking cancelled by admin${hadPlusOne ? " (with +1, reducing headcount by 2)" : ""}`);
 
     // Send cancellation email to user (non-blocking)
     if (booking?.user?.email && booking?.user?.name) {
@@ -204,4 +215,5 @@ export async function cancelBookingAdmin(bookingId: string) {
     }
 
     revalidatePath("/admin/bookings");
+    revalidatePath("/book"); // Revalidate to update capacity display
 }

@@ -23,15 +23,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" >
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${outfit.variable} antialiased`} // body class changed, inter.variable removed
+        className={`${outfit.variable} antialiased`}
+        suppressHydrationWarning
       >
         <AuthProvider>
           <Header />
           {children}
         </AuthProvider>
       </body>
-    </html >
+    </html>
   );
 }

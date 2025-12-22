@@ -69,6 +69,7 @@ export const coffeeShops = pgTable("coffee_shops", {
     image: text("image").notNull(),
     rating: integer("rating").notNull(),
     features: text("features").notNull(), // JSON string
+    googleMapsLink: text("google_maps_link"), // Optional Google Maps URL
 });
 
 export const meetups = pgTable("meetups", {
@@ -86,6 +87,7 @@ export const bookings = pgTable("bookings", {
     meetupId: text("meetup_id").notNull().references(() => meetups.id),
     vibe: text("vibe").notNull(),
     status: text("status").notNull().default("confirmed"),
+    hasPlusOne: text("has_plus_one").default("false"), // Store as text for compatibility
     createdAt: timestamp("created_at").defaultNow(),
 });
 

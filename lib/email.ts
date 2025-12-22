@@ -1,4 +1,4 @@
-import { bookingConfirmationHTML, cancellationConfirmationHTML } from "./email-templates";
+import { bookingConfirmationHTML, cancellationConfirmationHTML, reminderEmailHTML } from "./email-templates";
 
 // Lightweight email sending using Resend API directly (no SDK needed)
 async function sendEmail(to: string, subject: string, html: string) {
@@ -68,5 +68,21 @@ export async function sendCancellationConfirmation(details: {
         details.to,
         "Your Coffee Meetup Reservation has been Cancelled",
         cancellationConfirmationHTML(details)
+    );
+}
+
+export async function sendReminderEmail(details: {
+    to: string;
+    userName: string;
+    eventDate: string;
+    eventTime: string;
+    locationName: string;
+    locationAddress: string;
+    locationCity: string;
+}) {
+    return sendEmail(
+        details.to,
+        "Reminder: Your Coffee Meetup is Tomorrow! ☕",
+        reminderEmailHTML(details)
     );
 }

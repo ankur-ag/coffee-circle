@@ -3,7 +3,7 @@
 import { getDb } from "@/lib/db";
 import { bookings, users, feedback, meetups } from "@/lib/schema";
 import { eq } from "drizzle-orm";
-import { isBookingActive, isMeetupInFuture } from "@/lib/data";
+import { isBookingActive, isMeetupInFuture, isMeetupFull } from "@/lib/data";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -19,12 +19,15 @@ export async function bookMeetup(formData: FormData) {
     }
 
     const meetupId = formData.get("meetupId") as string;
-    const vibe = formData.get("vibe") as string;
+    const hasPlusOne = formData.get("hasPlusOne") === "true";
     const userId = session.user.id;
 
-    if (!meetupId || !vibe) {
+    if (!meetupId) {
         throw new Error("Missing required fields");
     }
+
+    // Use default vibe since it's no longer selected by users
+    const vibe = "social";
 
     console.log("Booking meetup:", { meetupId, vibe, userId });
 
@@ -74,6 +77,15 @@ export async function bookMeetup(formData: FormData) {
             throw new Error("Cannot book a past event. Please select an upcoming event.");
         }
 
+        // Check if event is full (6 attendees limit for non-admins, including +1 if applicable)
+        const isFull = await isMeetupFull(meetupId, hasPlusOne);
+        const isAdmin = session.user.role === "admin";
+
+        if (isFull && !isAdmin) {
+            const plusOneText = hasPlusOne ? " (including your +1)" : "";
+            throw new Error(`This event is full${plusOneText}. Maximum capacity is 6 attendees. Please select another event.`);
+        }
+
         console.log("Attempting insert...");
         const bookingId = crypto.randomUUID();
         await db.insert(bookings).values({
@@ -82,6 +94,7 @@ export async function bookMeetup(formData: FormData) {
             meetupId,
             vibe,
             status: "confirmed",
+            hasPlusOne: hasPlusOne ? "true" : "false",
         });
         console.log("Insert successful");
 
@@ -104,13 +117,15 @@ export async function bookMeetup(formData: FormData) {
             // Log but don't fail the booking
             console.error("Failed to send booking confirmation email:", emailError);
         }
+
+        revalidatePath("/dashboard");
+        revalidatePath("/book");
+        
+        return { success: true, bookingId };
     } catch (error) {
         console.error("Failed to book meetup (Detailed):", error);
         throw new Error(`Failed to book meetup: ${error instanceof Error ? error.message : String(error)}`);
     }
-
-    revalidatePath("/dashboard");
-    redirect("/dashboard");
 }
 
 export async function login() {
@@ -161,11 +176,19 @@ export async function cancelBooking(bookingId: string) {
             },
         });
 
+        // Verify the booking exists and belongs to the user before deleting
+        if (!booking || booking.userId !== session.user.id) {
+            throw new Error("Unauthorized: This booking does not belong to you");
+        }
+
         // Delete the booking - only if it belongs to the current user
+        // Note: When a booking with +1 is deleted, the headcount automatically decreases by 2
+        // because the capacity counting only includes confirmed bookings
         await db.delete(bookings)
             .where(eq(bookings.id, bookingId));
 
-        console.log("Booking canceled successfully");
+        const hadPlusOne = booking.hasPlusOne === "true";
+        console.log(`Booking canceled successfully${hadPlusOne ? " (with +1, reducing headcount by 2)" : ""}`);
 
         // Send cancellation email (non-blocking)
         if (booking && session.user?.email && session.user?.name) {
@@ -190,7 +213,7 @@ export async function cancelBooking(bookingId: string) {
 
     revalidatePath("/");
     revalidatePath("/dashboard");
-    revalidatePath("/book");
+    revalidatePath("/book"); // Revalidate to update capacity display
     redirect("/");
 }
 

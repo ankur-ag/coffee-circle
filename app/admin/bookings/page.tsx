@@ -3,13 +3,15 @@ import { bookings, users, meetups, coffeeShops } from "@/lib/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { CancelBookingButton } from "./cancel-button";
 import { LocationFilter } from "./location-filter";
+import { DateFilter } from "./date-filter";
 
 export const runtime = "edge";
 
-async function getBookings(locationId?: string) {
+async function getBookings(locationId?: string, eventDate?: string) {
     const db = getDb();
 
-    let query = db
+    // Build base query
+    const baseQuery = db
         .select({
             id: bookings.id,
             status: bookings.status,
@@ -26,38 +28,25 @@ async function getBookings(locationId?: string) {
         .leftJoin(meetups, eq(bookings.meetupId, meetups.id))
         .leftJoin(coffeeShops, eq(meetups.locationId, coffeeShops.id));
 
+    // Build where conditions
+    const conditions = [];
     if (locationId) {
-        // Note: Drizzle's query builder with joins and conditional where clauses can be tricky.
-        // For simplicity with this specific query structure, we'll apply the filter in the where clause directly if possible,
-        // but since we're using a chain, we might need to reconstruct it or use a dynamic where.
-        // Let's try a cleaner approach with dynamic where.
-
-        // Re-constructing query to support dynamic where
-        const baseQuery = db
-            .select({
-                id: bookings.id,
-                status: bookings.status,
-                createdAt: bookings.createdAt,
-                userName: users.name,
-                userEmail: users.email,
-                meetupDate: meetups.date,
-                meetupTime: meetups.time,
-                locationName: coffeeShops.name,
-                locationCity: coffeeShops.city,
-            })
-            .from(bookings)
-            .leftJoin(users, eq(bookings.userId, users.id))
-            .leftJoin(meetups, eq(bookings.meetupId, meetups.id))
-            .leftJoin(coffeeShops, eq(meetups.locationId, coffeeShops.id));
-
-        if (locationId) {
-            baseQuery.where(eq(meetups.locationId, locationId));
-        }
-
-        return await baseQuery.orderBy(desc(bookings.createdAt));
+        conditions.push(eq(meetups.locationId, locationId));
+    }
+    if (eventDate) {
+        conditions.push(eq(meetups.date, eventDate));
     }
 
-    return await query.orderBy(desc(bookings.createdAt));
+    // Apply where clause if we have any conditions
+    if (conditions.length > 0) {
+        if (conditions.length === 1) {
+            baseQuery.where(conditions[0]);
+        } else {
+            baseQuery.where(and(...conditions));
+        }
+    }
+
+    return await baseQuery.orderBy(desc(bookings.createdAt));
 }
 
 async function getLocations() {
@@ -65,16 +54,19 @@ async function getLocations() {
     return await db.select({ id: coffeeShops.id, name: coffeeShops.name, city: coffeeShops.city }).from(coffeeShops);
 }
 
-export default async function AdminBookingsPage({ searchParams }: { searchParams: Promise<{ locationId?: string }> }) {
-    const { locationId } = await searchParams;
-    const allBookings = await getBookings(locationId);
+export default async function AdminBookingsPage({ searchParams }: { searchParams: Promise<{ locationId?: string; eventDate?: string }> }) {
+    const { locationId, eventDate } = await searchParams;
+    const allBookings = await getBookings(locationId, eventDate);
     const locations = await getLocations();
 
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold">Reservations Management</h1>
-                <LocationFilter locations={locations} />
+                <div className="flex items-center gap-4">
+                    <DateFilter />
+                    <LocationFilter locations={locations} />
+                </div>
             </div>
 
             <div className="bg-white rounded-lg shadow overflow-hidden">

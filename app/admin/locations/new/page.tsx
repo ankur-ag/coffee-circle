@@ -42,6 +42,17 @@ export default function NewLocationPage() {
                 </div>
 
                 <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Google Maps Link</label>
+                    <input
+                        type="url"
+                        name="googleMapsLink"
+                        className="w-full border rounded px-3 py-2"
+                        placeholder="https://maps.google.com/..."
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Optional: Direct link to Google Maps location</p>
+                </div>
+
+                <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                     <textarea
                         name="description"

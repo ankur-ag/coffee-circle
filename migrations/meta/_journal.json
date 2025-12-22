@@ -22,6 +22,13 @@
       "when": 1765615358760,
       "tag": "0002_robust_tyrannus",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1766384128871,
+      "tag": "0003_solid_changeling",
+      "breakpoints": true
     }
   ]
 }

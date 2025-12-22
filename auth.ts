@@ -17,6 +17,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     secret: process.env.AUTH_SECRET,
     trustHost: true, // Required for Cloudflare/Next.js behind proxy
     debug: true, // Enable NextAuth debug logs
+    session: {
+        strategy: "database",
+        maxAge: 30 * 24 * 60 * 60, // 30 days in seconds (1 month)
+    },
     callbacks: {
         async session({ session, user }) {
             if (session.user) {
