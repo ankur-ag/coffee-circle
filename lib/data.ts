@@ -1,6 +1,6 @@
 import { getDb } from "@/lib/db";
 import { bookings, meetups, coffeeShops, users, feedback } from "@/lib/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 
 /**
  * Check if a meetup is in the future (not past)
@@ -67,10 +67,11 @@ export async function getUserBooking(userId: string) {
 export async function getUpcomingMeetups() {
     const db = getDb();
 
-    // Get all open meetups
-    const allMeetups = await db.query.meetups.findMany({
-        where: eq(meetups.status, "open"),
-    }) as any[];
+    // Get all open meetups using standard select (Edge Runtime compatible)
+    const allMeetups = await db
+        .select()
+        .from(meetups)
+        .where(eq(meetups.status, "open")) as any[];
 
     // Filter to only include future meetups
     const futureMeetups = allMeetups.filter((meetup: any) => isMeetupInFuture(meetup));
@@ -87,12 +88,14 @@ export async function getUpcomingMeetups() {
     // For each meetup, count confirmed attendees (including +1s)
     const meetupsWithAttendees = await Promise.all(
         twoMostRecent.map(async (meetup: any) => {
-            const confirmedBookings = await db.query.bookings.findMany({
-                where: (bookings, { and, eq }) => and(
+            // Use standard select instead of query API for Edge Runtime compatibility
+            const confirmedBookings = await db
+                .select()
+                .from(bookings)
+                .where(and(
                     eq(bookings.meetupId, meetup.id),
                     eq(bookings.status, "confirmed")
-                ),
-            }) as any[];
+                )) as any[];
 
             // Count total attendees: each booking counts as 1, +1 bookings count as 2
             // Note: Cancelled bookings are automatically excluded since we only query confirmed bookings
@@ -119,12 +122,14 @@ export async function getUpcomingMeetups() {
  */
 export async function isMeetupFull(meetupId: string, includePlusOne: boolean = false): Promise<boolean> {
     const db = getDb();
-    const confirmedBookings = await db.query.bookings.findMany({
-        where: (bookings, { and, eq }) => and(
+    // Use standard select for Edge Runtime compatibility
+    const confirmedBookings = await db
+        .select()
+        .from(bookings)
+        .where(and(
             eq(bookings.meetupId, meetupId),
             eq(bookings.status, "confirmed")
-        ),
-    }) as any[];
+        )) as any[];
 
     // Count total attendees: each booking counts as 1, +1 bookings count as 2
     // Note: Cancelled bookings are automatically excluded since we only query confirmed bookings

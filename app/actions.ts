@@ -1,8 +1,8 @@
 "use server";
 
 import { getDb } from "@/lib/db";
-import { bookings, users, feedback, meetups } from "@/lib/schema";
-import { eq } from "drizzle-orm";
+import { bookings, users, feedback, meetups, coffeeShops } from "@/lib/schema";
+import { eq, and } from "drizzle-orm";
 import { isBookingActive, isMeetupInFuture, isMeetupFull } from "@/lib/data";
 
 import { revalidatePath } from "next/cache";
@@ -35,23 +35,50 @@ export async function bookMeetup(formData: FormData) {
 
     try {
         // Check if user already has ANY active (upcoming) booking
-        // Get all confirmed bookings for the user
-        const allConfirmedBookings = await db.query.bookings.findMany({
-            where: (bookings, { and, eq }) => and(
+        // Get all confirmed bookings for the user (Edge Runtime compatible)
+        const allConfirmedBookings = await db
+            .select()
+            .from(bookings)
+            .where(and(
                 eq(bookings.userId, userId),
                 eq(bookings.status, "confirmed")
-            ),
-            with: {
-                meetup: {
-                    with: {
-                        location: true,
-                    },
-                },
-            },
-        }) as any[];
+            )) as any[];
+
+        // Get meetups for these bookings to check if they're active
+        const bookingsWithMeetups = await Promise.all(
+            allConfirmedBookings.map(async (booking: any) => {
+                const meetup = await db
+                    .select()
+                    .from(meetups)
+                    .where(eq(meetups.id, booking.meetupId))
+                    .limit(1) as any[];
+                
+                if (meetup.length > 0) {
+                    // Get location if it exists
+                    let location = null;
+                    if (meetup[0].locationId) {
+                        const locationData = await db
+                            .select()
+                            .from(coffeeShops)
+                            .where(eq(coffeeShops.id, meetup[0].locationId))
+                            .limit(1) as any[];
+                        location = locationData.length > 0 ? locationData[0] : null;
+                    }
+                    
+                    return {
+                        ...booking,
+                        meetup: {
+                            ...meetup[0],
+                            location,
+                        },
+                    };
+                }
+                return { ...booking, meetup: null };
+            })
+        );
 
         // Find the first active (upcoming) booking
-        const existingActiveBooking = allConfirmedBookings.find((booking: any) => isBookingActive(booking));
+        const existingActiveBooking = bookingsWithMeetups.find((booking: any) => isBookingActive(booking));
 
         if (existingActiveBooking) {
             console.log("User already has an active booking");
@@ -61,13 +88,34 @@ export async function bookMeetup(formData: FormData) {
             );
         }
 
-        // Verify the meetup exists and is in the future
-        const meetup = await db.query.meetups.findFirst({
-            where: eq(meetups.id, meetupId),
-            with: {
-                location: true,
-            },
-        }) as any;
+        // Verify the meetup exists and is in the future (Edge Runtime compatible)
+        const meetupResult = await db
+            .select()
+            .from(meetups)
+            .where(eq(meetups.id, meetupId))
+            .limit(1) as any[];
+        
+        if (meetupResult.length === 0) {
+            throw new Error("Meetup not found");
+        }
+        
+        const meetupData = meetupResult[0];
+        
+        // Get location if it exists
+        let location = null;
+        if (meetupData.locationId) {
+            const locationResult = await db
+                .select()
+                .from(coffeeShops)
+                .where(eq(coffeeShops.id, meetupData.locationId))
+                .limit(1) as any[];
+            location = locationResult.length > 0 ? locationResult[0] : null;
+        }
+        
+        const meetup = {
+            ...meetupData,
+            location,
+        } as any;
 
         if (!meetup) {
             throw new Error("Meetup not found");
