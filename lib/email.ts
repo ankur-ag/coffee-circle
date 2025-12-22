@@ -1,4 +1,6 @@
 import { bookingConfirmationHTML, cancellationConfirmationHTML, reminderEmailHTML } from "./email-templates";
+import { LOCATION_REVEAL_DAYS } from "./config";
+import { differenceInDays } from "date-fns";
 
 // Lightweight email sending using Resend API directly (no SDK needed)
 async function sendEmail(to: string, subject: string, html: string) {
@@ -49,10 +51,23 @@ export async function sendBookingConfirmation(details: {
     locationAddress: string;
     locationCity: string;
 }) {
+    // Check if location should be revealed based on event date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const eventDate = new Date(details.eventDate);
+    eventDate.setHours(0, 0, 0, 0);
+    
+    const daysUntilEvent = differenceInDays(eventDate, today);
+    const shouldRevealLocation = daysUntilEvent <= LOCATION_REVEAL_DAYS;
+    
     return sendEmail(
         details.to,
         "Your Coffee Meetup is Confirmed! ☕",
-        bookingConfirmationHTML(details)
+        bookingConfirmationHTML({
+            ...details,
+            shouldRevealLocation,
+        })
     );
 }
 

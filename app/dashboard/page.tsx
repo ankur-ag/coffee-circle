@@ -3,14 +3,31 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
-import { format } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 import { getUserBooking, getUnratedPastBooking } from "@/lib/data";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { LOCATION_REVEAL_DAYS } from "@/lib/config";
 
 import { cancelBooking } from "@/app/actions";
 
 export const runtime = "edge";
+
+/**
+ * Check if location should be revealed based on global config
+ */
+function shouldRevealLocation(eventDate: string): boolean {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const event = new Date(eventDate);
+    event.setHours(0, 0, 0, 0);
+    
+    const daysUntilEvent = differenceInDays(event, today);
+    
+    // Reveal location based on LOCATION_REVEAL_DAYS config
+    return daysUntilEvent <= LOCATION_REVEAL_DAYS;
+}
 
 export default async function DashboardPage() {
     const session = await auth();
@@ -43,7 +60,19 @@ export default async function DashboardPage() {
 
     const { meetup, attendees } = booking;
     const location = meetup.location;
-    const isRevealed = !!location;
+    const hasLocation = !!location;
+    const isRevealed = hasLocation && shouldRevealLocation(meetup.date);
+    
+    // Calculate days until reveal
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const eventDate = new Date(meetup.date);
+    eventDate.setHours(0, 0, 0, 0);
+    const daysUntilEvent = differenceInDays(eventDate, today);
+    const daysUntilReveal = Math.max(0, daysUntilEvent - LOCATION_REVEAL_DAYS);
+    
+    // Coffee brewing image for hidden locations
+    const COFFEE_BREWING_IMAGE = "https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?q=80&w=1000&auto=format&fit=crop";
 
     return (
         <main className="container mx-auto max-w-4xl px-4 py-12 md:px-6">
@@ -70,12 +99,22 @@ export default async function DashboardPage() {
                                     className="object-cover"
                                 />
                             ) : (
-                                <div className="flex h-full items-center justify-center bg-secondary/50">
-                                    <MapPin className="h-12 w-12 text-muted-foreground opacity-20" />
-                                </div>
+                                <Image
+                                    src={COFFEE_BREWING_IMAGE}
+                                    alt="Coffee brewing"
+                                    fill
+                                    className="object-cover opacity-60"
+                                />
+                            )}
+                            {!isRevealed && hasLocation && (
+                                <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
                             )}
                             <div className="absolute right-4 top-4 rounded-full bg-background/90 px-3 py-1 text-xs font-medium backdrop-blur">
-                                {isRevealed ? "Location Revealed" : "Reveals Saturday 9AM"}
+                                {isRevealed 
+                                    ? "Location Revealed" 
+                                    : daysUntilReveal > 0
+                                        ? `Reveals in ${daysUntilReveal} day${daysUntilReveal !== 1 ? 's' : ''}`
+                                        : "Reveals soon"}
                             </div>
                         </div>
                         <CardHeader>
@@ -90,7 +129,9 @@ export default async function DashboardPage() {
                                         {location.name}
                                     </a>
                                 ) : (
-                                    "Mystery Location"
+                                    <span className={hasLocation && !isRevealed ? "blur-sm select-none" : ""}>
+                                        Mystery Location
+                                    </span>
                                 )}
                             </CardTitle>
                             <div className="flex items-center gap-2 text-muted-foreground">
@@ -105,7 +146,9 @@ export default async function DashboardPage() {
                                         {location.location}
                                     </a>
                                 ) : (
-                                    <span>Taipei City (TBA)</span>
+                                    <span className={hasLocation && !isRevealed ? "blur-sm select-none" : ""}>
+                                        {hasLocation ? "Location hidden until 2 days before event" : "Taipei City (TBA)"}
+                                    </span>
                                 )}
                             </div>
                         </CardHeader>
@@ -126,9 +169,18 @@ export default async function DashboardPage() {
                                     </div>
                                 </div>
                             ) : (
-                                <p className="text-muted-foreground">
-                                    We're curating the perfect spot for your group. Check back on Saturday morning!
-                                </p>
+                                <div className="space-y-2">
+                                    <p className="text-muted-foreground">
+                                        {hasLocation 
+                                            ? `We're curating the perfect spot for your group. The location will be revealed ${LOCATION_REVEAL_DAYS} day${LOCATION_REVEAL_DAYS > 1 ? 's' : ''} before the event!`
+                                            : "We're curating the perfect spot for your group. Check back soon!"}
+                                    </p>
+                                    {hasLocation && !isRevealed && daysUntilReveal > 0 && (
+                                        <p className="text-sm text-muted-foreground">
+                                            Location will be revealed in {daysUntilReveal} day{daysUntilReveal !== 1 ? 's' : ''}.
+                                        </p>
+                                    )}
+                                </div>
                             )}
                         </CardContent>
                     </Card>

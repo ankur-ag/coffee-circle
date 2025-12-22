@@ -5,7 +5,9 @@ export function bookingConfirmationHTML(details: {
     locationName: string;
     locationAddress: string;
     locationCity: string;
+    shouldRevealLocation?: boolean;
 }) {
+    const revealLocation = details.shouldRevealLocation ?? false;
     return `
 <!DOCTYPE html>
 <html>
@@ -28,9 +30,14 @@ export function bookingConfirmationHTML(details: {
       <h2 style="margin-top: 0; color: #667eea; font-size: 20px;">Event Details</h2>
       <p style="margin: 10px 0;"><strong>📅 Date:</strong> ${details.eventDate}</p>
       <p style="margin: 10px 0;"><strong>🕐 Time:</strong> ${details.eventTime}</p>
+      ${revealLocation ? `
       <p style="margin: 10px 0;"><strong>📍 Location:</strong> ${details.locationName}</p>
       <p style="margin: 10px 0;"><strong>🏙️ City:</strong> ${details.locationCity}</p>
       <p style="margin: 10px 0;"><strong>🗺️ Address:</strong> ${details.locationAddress}</p>
+      ` : `
+      <p style="margin: 10px 0;"><strong>📍 Location:</strong> Mystery Location</p>
+      <p style="margin: 10px 0; color: #666; font-style: italic;">The location will be revealed closer to the event date. Check your dashboard for updates!</p>
+      `}
     </div>
     
     <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #f59e0b;">
