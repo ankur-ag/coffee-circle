@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { getTomorrowEventsWithAttendees } from "@/lib/data";
+import { getEventsWithAttendees } from "@/lib/data";
 import { sendReminderEmail } from "@/lib/email";
+import { REMINDER_EMAIL_DAYS } from "@/lib/config";
 import { format } from "date-fns";
 
 export const runtime = "edge";
@@ -16,16 +17,16 @@ export async function GET(request: Request) {
     }
 
     try {
-        console.log("Starting reminder email process...");
+        console.log(`Starting reminder email process for events ${REMINDER_EMAIL_DAYS} days from now...`);
         
-        // Get all events happening tomorrow with their attendees
-        const tomorrowEvents = await getTomorrowEventsWithAttendees();
+        // Get all events happening in REMINDER_EMAIL_DAYS with their attendees
+        const targetEvents = await getEventsWithAttendees(REMINDER_EMAIL_DAYS);
         
-        if (tomorrowEvents.length === 0) {
-            console.log("No events found for tomorrow");
+        if (targetEvents.length === 0) {
+            console.log(`No events found for ${REMINDER_EMAIL_DAYS} days from now`);
             return NextResponse.json({ 
                 success: true, 
-                message: "No events found for tomorrow",
+                message: `No events found for ${REMINDER_EMAIL_DAYS} days from now`,
                 emailsSent: 0 
             });
         }
@@ -34,7 +35,7 @@ export async function GET(request: Request) {
         let emailsFailed = 0;
 
         // Send reminder emails for each event
-        for (const event of tomorrowEvents) {
+        for (const event of targetEvents) {
             console.log(`Processing event: ${event.date} at ${event.time} (${event.bookings.length} bookings)`);
             
             for (const booking of event.bookings) {

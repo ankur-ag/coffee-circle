@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/db";
 import { bookings, meetups, coffeeShops, users, feedback } from "@/lib/schema";
 import { eq, desc, and } from "drizzle-orm";
+import { REMINDER_EMAIL_DAYS } from "@/lib/config";
 
 /**
  * Check if a meetup is in the future (not past)
@@ -240,48 +241,85 @@ export async function getUnratedPastBooking(userId: string): Promise<string | nu
 }
 
 /**
- * Get all events happening tomorrow with their confirmed bookings and user details
+ * Get all events happening in N days with their confirmed bookings and user details
+ * @param daysFromNow Number of days from today (default: 2 for reminder emails)
  */
-export async function getTomorrowEventsWithAttendees() {
+export async function getEventsWithAttendees(daysFromNow: number = 2) {
     const db = getDb();
 
-    // Calculate tomorrow's date
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(0, 0, 0, 0);
+    // Calculate target date (N days from today)
+    const targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() + daysFromNow);
+    targetDate.setHours(0, 0, 0, 0);
     
-    const tomorrowDateStr = tomorrow.toISOString().split("T")[0];
+    const targetDateStr = targetDate.toISOString().split("T")[0];
 
-    // Get all meetups and filter for tomorrow's date
-    // Note: We get all meetups and filter because date is stored as text
-    const allMeetups = await db.query.meetups.findMany({
-        with: {
-            location: true,
-        }
-    }) as any[];
+    // Get all meetups using standard select (Edge Runtime compatible)
+    const allMeetups = await db
+        .select()
+        .from(meetups) as any[];
 
-    // Filter for tomorrow's date
-    const tomorrowMeetups = allMeetups.filter((meetup: any) => meetup.date === tomorrowDateStr);
+    // Filter for target date
+    const targetMeetups = allMeetups.filter((meetup: any) => meetup.date === targetDateStr);
 
     // For each meetup, get confirmed bookings with user details
     const meetupsWithBookings = await Promise.all(
-        tomorrowMeetups.map(async (meetup: any) => {
-            const confirmedBookings = await db.query.bookings.findMany({
-                where: (bookings, { and, eq }) => and(
+        targetMeetups.map(async (meetup: any) => {
+            // Use standard select for Edge Runtime compatibility
+            const confirmedBookings = await db
+                .select()
+                .from(bookings)
+                .where(and(
                     eq(bookings.meetupId, meetup.id),
                     eq(bookings.status, "confirmed")
-                ),
-                with: {
-                    user: true,
+                )) as any[];
+
+            // Get user details for each booking
+            const bookingsWithUsers = await Promise.all(
+                confirmedBookings.map(async (booking: any) => {
+                    const userResult = await db
+                        .select()
+                        .from(users)
+                        .where(eq(users.id, booking.userId))
+                        .limit(1) as any[];
+                    
+                    return {
+                        ...booking,
+                        user: userResult.length > 0 ? userResult[0] : null,
+                    };
+                })
+            );
+
+            // Get location if it exists
+            let location = null;
+            if (meetup.locationId) {
+                try {
+                    const locationResult = await db
+                        .select()
+                        .from(coffeeShops)
+                        .where(eq(coffeeShops.id, meetup.locationId))
+                        .limit(1) as any[];
+                    location = locationResult.length > 0 ? locationResult[0] : null;
+                } catch (locationError) {
+                    console.warn("Failed to fetch location:", locationError);
                 }
-            }) as any[];
+            }
 
             return {
                 ...meetup,
-                bookings: confirmedBookings,
+                location,
+                bookings: bookingsWithUsers,
             };
         })
     );
 
     return meetupsWithBookings;
+}
+
+/**
+ * Get all events happening tomorrow with their confirmed bookings and user details
+ * @deprecated Use getEventsWithAttendees(1) instead
+ */
+export async function getTomorrowEventsWithAttendees() {
+    return getEventsWithAttendees(1);
 }

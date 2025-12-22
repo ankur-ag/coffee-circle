@@ -60,7 +60,9 @@ export function BookingForm({ meetups }: { meetups: Meetup[] }) {
                 router.push("/dashboard");
             } else {
                 setIsSubmitting(false);
-                setError(err instanceof Error ? err.message : "Failed to book meetup. Please try again.");
+                // Extract user-friendly error message
+                const errorMessage = err instanceof Error ? err.message : "Failed to book meetup. Please try again.";
+                setError(errorMessage);
             }
         }
     };
@@ -77,6 +79,14 @@ export function BookingForm({ meetups }: { meetups: Meetup[] }) {
                     <div className="flex-1">
                         <h3 className="text-sm font-medium text-red-800">Unable to Book</h3>
                         <p className="text-sm text-red-700 mt-1">{error}</p>
+                        {error.includes("already have an active reservation") && (
+                            <a
+                                href="/dashboard"
+                                className="text-sm text-red-600 underline hover:text-red-800 mt-2 inline-block"
+                            >
+                                Go to Dashboard to Cancel
+                            </a>
+                        )}
                     </div>
                 </div>
             )}

@@ -15,7 +15,9 @@ export async function bookMeetup(formData: FormData) {
     console.log("Booking Session:", JSON.stringify(session, null, 2));
 
     if (!session?.user?.id) {
-        throw new Error("Unauthorized");
+        const error = new Error("Please sign in to book a meetup.");
+        (error as any).userFriendly = true;
+        throw error;
     }
 
     const meetupId = formData.get("meetupId") as string;
@@ -23,7 +25,9 @@ export async function bookMeetup(formData: FormData) {
     const userId = session.user.id;
 
     if (!meetupId) {
-        throw new Error("Missing required fields");
+        const error = new Error("Please select an event date to continue.");
+        (error as any).userFriendly = true;
+        throw error;
     }
 
     // Use default vibe since it's no longer selected by users
@@ -36,44 +40,60 @@ export async function bookMeetup(formData: FormData) {
     try {
         // Check if user already has ANY active (upcoming) booking
         // Get all confirmed bookings for the user (Edge Runtime compatible)
-        const allConfirmedBookings = await db
-            .select()
-            .from(bookings)
-            .where(and(
-                eq(bookings.userId, userId),
-                eq(bookings.status, "confirmed")
-            )) as any[];
+        let allConfirmedBookings: any[] = [];
+        try {
+            allConfirmedBookings = await db
+                .select()
+                .from(bookings)
+                .where(and(
+                    eq(bookings.userId, userId),
+                    eq(bookings.status, "confirmed")
+                )) as any[];
+        } catch (dbError) {
+            console.error("Database error fetching bookings:", dbError);
+            throw new Error("Unable to check your existing reservations. Please try again.");
+        }
 
         // Get meetups for these bookings to check if they're active
         const bookingsWithMeetups = await Promise.all(
             allConfirmedBookings.map(async (booking: any) => {
-                const meetup = await db
-                    .select()
-                    .from(meetups)
-                    .where(eq(meetups.id, booking.meetupId))
-                    .limit(1) as any[];
-                
-                if (meetup.length > 0) {
-                    // Get location if it exists
-                    let location = null;
-                    if (meetup[0].locationId) {
-                        const locationData = await db
-                            .select()
-                            .from(coffeeShops)
-                            .where(eq(coffeeShops.id, meetup[0].locationId))
-                            .limit(1) as any[];
-                        location = locationData.length > 0 ? locationData[0] : null;
-                    }
+                try {
+                    const meetup = await db
+                        .select()
+                        .from(meetups)
+                        .where(eq(meetups.id, booking.meetupId))
+                        .limit(1) as any[];
                     
-                    return {
-                        ...booking,
-                        meetup: {
-                            ...meetup[0],
-                            location,
-                        },
-                    };
+                    if (meetup.length > 0) {
+                        // Get location if it exists
+                        let location = null;
+                        if (meetup[0].locationId) {
+                            try {
+                                const locationData = await db
+                                    .select()
+                                    .from(coffeeShops)
+                                    .where(eq(coffeeShops.id, meetup[0].locationId))
+                                    .limit(1) as any[];
+                                location = locationData.length > 0 ? locationData[0] : null;
+                            } catch (locationError) {
+                                // Location fetch failed, but continue without it
+                                console.warn("Failed to fetch location:", locationError);
+                            }
+                        }
+                        
+                        return {
+                            ...booking,
+                            meetup: {
+                                ...meetup[0],
+                                location,
+                            },
+                        };
+                    }
+                    return { ...booking, meetup: null };
+                } catch (meetupError) {
+                    console.error("Error fetching meetup:", meetupError);
+                    return { ...booking, meetup: null };
                 }
-                return { ...booking, meetup: null };
             })
         );
 
@@ -82,21 +102,31 @@ export async function bookMeetup(formData: FormData) {
 
         if (existingActiveBooking) {
             console.log("User already has an active booking");
-            // Return error message instead of silently redirecting
-            throw new Error(
-                `You already have an active reservation for ${existingActiveBooking.meetup?.date} at ${existingActiveBooking.meetup?.time}. Please cancel it first if you'd like to book a different meetup.`
-            );
+            // Return user-friendly error message
+            const errorMessage = `You already have an active reservation for ${existingActiveBooking.meetup?.date} at ${existingActiveBooking.meetup?.time}. Please cancel it first if you'd like to book a different meetup.`;
+            // Create a custom error that won't be wrapped
+            const error = new Error(errorMessage);
+            (error as any).userFriendly = true;
+            throw error;
         }
 
         // Verify the meetup exists and is in the future (Edge Runtime compatible)
-        const meetupResult = await db
-            .select()
-            .from(meetups)
-            .where(eq(meetups.id, meetupId))
-            .limit(1) as any[];
+        let meetupResult: any[] = [];
+        try {
+            meetupResult = await db
+                .select()
+                .from(meetups)
+                .where(eq(meetups.id, meetupId))
+                .limit(1) as any[];
+        } catch (dbError) {
+            console.error("Database error fetching meetup:", dbError);
+            throw new Error("Unable to verify the event. Please try again.");
+        }
         
         if (meetupResult.length === 0) {
-            throw new Error("Meetup not found");
+            const error = new Error("This event is no longer available. Please select another event.");
+            (error as any).userFriendly = true;
+            throw error;
         }
         
         const meetupData = meetupResult[0];
@@ -104,12 +134,17 @@ export async function bookMeetup(formData: FormData) {
         // Get location if it exists
         let location = null;
         if (meetupData.locationId) {
-            const locationResult = await db
-                .select()
-                .from(coffeeShops)
-                .where(eq(coffeeShops.id, meetupData.locationId))
-                .limit(1) as any[];
-            location = locationResult.length > 0 ? locationResult[0] : null;
+            try {
+                const locationResult = await db
+                    .select()
+                    .from(coffeeShops)
+                    .where(eq(coffeeShops.id, meetupData.locationId))
+                    .limit(1) as any[];
+                location = locationResult.length > 0 ? locationResult[0] : null;
+            } catch (locationError) {
+                // Location fetch failed, but continue without it
+                console.warn("Failed to fetch location:", locationError);
+            }
         }
         
         const meetup = {
@@ -117,12 +152,10 @@ export async function bookMeetup(formData: FormData) {
             location,
         } as any;
 
-        if (!meetup) {
-            throw new Error("Meetup not found");
-        }
-
         if (!isMeetupInFuture(meetup)) {
-            throw new Error("Cannot book a past event. Please select an upcoming event.");
+            const error = new Error("Cannot book a past event. Please select an upcoming event.");
+            (error as any).userFriendly = true;
+            throw error;
         }
 
         // Check if event is full (6 attendees limit for non-admins, including +1 if applicable)
@@ -131,20 +164,27 @@ export async function bookMeetup(formData: FormData) {
 
         if (isFull && !isAdmin) {
             const plusOneText = hasPlusOne ? " (including your +1)" : "";
-            throw new Error(`This event is full${plusOneText}. Maximum capacity is 6 attendees. Please select another event.`);
+            const error = new Error(`This event is full${plusOneText}. Maximum capacity is 6 attendees. Please select another event.`);
+            (error as any).userFriendly = true;
+            throw error;
         }
 
         console.log("Attempting insert...");
         const bookingId = crypto.randomUUID();
-        await db.insert(bookings).values({
-            id: bookingId,
-            userId,
-            meetupId,
-            vibe,
-            status: "confirmed",
-            hasPlusOne: hasPlusOne ? "true" : "false",
-        });
-        console.log("Insert successful");
+        try {
+            await db.insert(bookings).values({
+                id: bookingId,
+                userId,
+                meetupId,
+                vibe,
+                status: "confirmed",
+                hasPlusOne: hasPlusOne ? "true" : "false",
+            });
+            console.log("Insert successful");
+        } catch (insertError) {
+            console.error("Database error inserting booking:", insertError);
+            throw new Error("Unable to complete your booking. Please try again.");
+        }
 
         // Send confirmation email (non-blocking)
         try {
@@ -172,7 +212,43 @@ export async function bookMeetup(formData: FormData) {
         return { success: true, bookingId };
     } catch (error) {
         console.error("Failed to book meetup (Detailed):", error);
-        throw new Error(`Failed to book meetup: ${error instanceof Error ? error.message : String(error)}`);
+        
+        // If it's already a user-friendly error, re-throw it as-is
+        if (error instanceof Error && (error as any).userFriendly) {
+            throw error;
+        }
+        
+        // For database errors or other technical errors, provide a user-friendly message
+        if (error instanceof Error) {
+            const errorMessage = error.message.toLowerCase();
+            
+            // Check for common database errors and provide user-friendly messages
+            if (errorMessage.includes("connection") || errorMessage.includes("timeout") || errorMessage.includes("network")) {
+                throw new Error("Unable to connect to the server. Please check your internet connection and try again.");
+            } else if (errorMessage.includes("unauthorized") || errorMessage.includes("permission")) {
+                throw new Error("You don't have permission to perform this action. Please sign in and try again.");
+            } else if (errorMessage.includes("missing required fields") || errorMessage.includes("invalid")) {
+                throw new Error("Please fill in all required fields and try again.");
+            } else {
+                // For other errors, use the original message if it's user-friendly, otherwise provide a generic message
+                // Check if the error message looks user-friendly (doesn't contain technical terms)
+                const isTechnicalError = errorMessage.includes("failed query") || 
+                                        errorMessage.includes("sql") || 
+                                        errorMessage.includes("database") ||
+                                        errorMessage.includes("postgres") ||
+                                        errorMessage.includes("error code");
+                
+                if (isTechnicalError) {
+                    throw new Error("Something went wrong while processing your booking. Please try again or contact support if the problem persists.");
+                } else {
+                    // Use the original error message if it's already user-friendly
+                    throw error;
+                }
+            }
+        }
+        
+        // Fallback for unknown errors
+        throw new Error("Something went wrong. Please try again.");
     }
 }
 
