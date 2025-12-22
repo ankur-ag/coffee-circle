@@ -33,7 +33,7 @@ export default async function PastEventsPage() {
     );
 
     return (
-        <main className="container mx-auto max-w-4xl px-4 py-12 md:px-6">
+        <main className="container mx-auto max-w-4xl px-5 py-12 md:px-6">
             <div className="mb-8">
                 <h1 className="text-3xl font-bold tracking-tight">Past Events</h1>
                 <p className="text-muted-foreground mt-2">Your previous coffee meetups</p>

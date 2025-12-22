@@ -25,7 +25,8 @@ Create or update `.env.local` in your project root:
 
 ```bash
 # Development Database (separate from production)
-POSTGRES_URL=your_dev_database_connection_string_here
+# Use POSTGRES_URL_DEV to explicitly separate dev from prod
+POSTGRES_URL_DEV=your_dev_database_connection_string_here
 
 # Other environment variables
 AUTH_GOOGLE_ID=your-google-client-id
@@ -33,7 +34,7 @@ AUTH_GOOGLE_SECRET=your-google-client-secret
 AUTH_SECRET=your-auth-secret
 ```
 
-**Important:** Set `POSTGRES_URL` in `.env.local` to point to your **development** database.
+**Important:** Set `POSTGRES_URL_DEV` in `.env.local` to point to your **development** database. This ensures your local dev environment uses a different database than production.
 
 ### 3. Configure Production Database
 
@@ -42,25 +43,39 @@ In Vercel Dashboard:
 2. Add `POSTGRES_URL` with your **production** database connection string
 3. Make sure it's set for **Production** environment only (not Development/Preview)
 
-### 4. Run Migrations
+### 4. Initialize Dev Database
 
-After setting up your dev database, run migrations:
+After setting up your dev database, initialize it with all required tables:
 
 ```bash
-# Make sure POSTGRES_URL is set in .env.local to your dev database
+# Make sure POSTGRES_URL_DEV is set in .env.local to your dev database
+npm run init-dev-db
+```
+
+This will create all necessary tables in your dev database.
+
+### 5. Run Additional Migrations (if needed)
+
+If there are any additional migrations after initialization:
+
+```bash
 npm run migrate:google-maps
 ```
 
-Or manually run the migration SQL on your dev database.
+**Important:** Run initialization and migrations on both databases:
+- Dev database: Run locally with `POSTGRES_URL_DEV` in `.env.local`
+- Prod database: Run via Vercel or manually with production connection string
 
 ## How It Works
 
 - **Local Development (`npm run dev`):**
-  - Uses `POSTGRES_URL` from `.env.local` → Points to dev database
+  - Uses `POSTGRES_URL_DEV` from `.env.local` → Points to dev database
+  - Falls back to `POSTGRES_URL` if `POSTGRES_URL_DEV` is not set
   - Environment variables in `.env.local` override Vercel's env vars locally
 
 - **Production (Vercel):**
   - Uses `POSTGRES_URL` from Vercel environment variables → Points to production database
+  - `POSTGRES_URL_DEV` is not set in production, so it uses `POSTGRES_URL`
   - Vercel environment variables take precedence in production
 
 ## Verification
@@ -87,10 +102,11 @@ To verify you're using separate databases:
 
 ### Still seeing test data in production?
 
-1. Verify `POSTGRES_URL` in `.env.local` points to your dev database
+1. Verify `POSTGRES_URL_DEV` in `.env.local` points to your dev database (different from prod)
 2. Verify `POSTGRES_URL` in Vercel points to your production database (different from dev)
 3. Restart your dev server after changing `.env.local`
 4. Make sure Vercel env var is set for **Production** environment only
+5. Check that the connection strings are actually different (not the same database)
 
 ### Migration errors
 

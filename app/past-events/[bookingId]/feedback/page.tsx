@@ -32,7 +32,7 @@ export default async function FeedbackPage({ params }: { params: Promise<{ booki
     const location = meetup?.location;
 
     return (
-        <main className="container mx-auto max-w-4xl px-4 py-12 md:px-6">
+        <main className="container mx-auto max-w-4xl px-5 py-12 md:px-6">
             <Link href="/past-events" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6">
                 <ArrowLeft className="h-4 w-4" />
                 <span>Back to Past Events</span>

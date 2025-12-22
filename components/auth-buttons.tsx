@@ -8,8 +8,11 @@ export function SignIn() {
         <Button
             onClick={() => signIn("google")}
             variant="outline"
+            size="sm"
+            className="text-xs sm:text-sm"
         >
-            Sign in with Google
+            <span className="hidden sm:inline">Sign in with Google</span>
+            <span className="sm:hidden">Sign In</span>
         </Button>
     );
 }

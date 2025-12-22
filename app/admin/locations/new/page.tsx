@@ -7,7 +7,7 @@ export default function NewLocationPage() {
         <div className="max-w-2xl mx-auto">
             <h1 className="text-2xl font-bold mb-6">Add New Location</h1>
 
-            <form action={createCoffeeShop} className="bg-white p-6 rounded-lg shadow space-y-4">
+            <form action={createCoffeeShop} className="bg-white p-4 sm:p-6 rounded-lg shadow space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
                     <input

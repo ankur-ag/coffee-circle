@@ -288,22 +288,48 @@ export async function cancelBooking(bookingId: string) {
     const db = getDb();
 
     try {
-        // Get booking details before deletion for email
-        const booking = await db.query.bookings.findFirst({
-            where: (bookings, { eq }) => eq(bookings.id, bookingId),
-            with: {
-                meetup: {
-                    with: {
-                        location: true,
-                    },
-                },
-            },
-        });
+        // Get booking details before deletion for email (Edge Runtime compatible)
+        const bookingResult = await db
+            .select()
+            .from(bookings)
+            .where(eq(bookings.id, bookingId))
+            .limit(1) as any[];
 
-        // Verify the booking exists and belongs to the user before deleting
-        if (!booking || booking.userId !== session.user.id) {
-            throw new Error("Unauthorized: This booking does not belong to you");
+        if (bookingResult.length === 0 || bookingResult[0].userId !== session.user.id) {
+            const error = new Error("This booking does not belong to you.");
+            (error as any).userFriendly = true;
+            throw error;
         }
+
+        const booking = bookingResult[0];
+
+        // Get meetup details
+        let meetup = null;
+        if (booking.meetupId) {
+            const meetupResult = await db
+                .select()
+                .from(meetups)
+                .where(eq(meetups.id, booking.meetupId))
+                .limit(1) as any[];
+            meetup = meetupResult.length > 0 ? meetupResult[0] : null;
+        }
+
+        // Get location if meetup has one
+        let location = null;
+        if (meetup?.locationId) {
+            const locationResult = await db
+                .select()
+                .from(coffeeShops)
+                .where(eq(coffeeShops.id, meetup.locationId))
+                .limit(1) as any[];
+            location = locationResult.length > 0 ? locationResult[0] : null;
+        }
+
+        // Combine booking with meetup and location
+        const bookingWithDetails = {
+            ...booking,
+            meetup: meetup ? { ...meetup, location } : null,
+        };
 
         // Delete the booking - only if it belongs to the current user
         // Note: When a booking with +1 is deleted, the headcount automatically decreases by 2
@@ -315,16 +341,16 @@ export async function cancelBooking(bookingId: string) {
         console.log(`Booking canceled successfully${hadPlusOne ? " (with +1, reducing headcount by 2)" : ""}`);
 
         // Send cancellation email (non-blocking)
-        if (booking && session.user?.email && session.user?.name) {
+        if (session.user?.email && session.user?.name) {
             try {
                 const { sendCancellationConfirmation } = await import("@/lib/email");
                 await sendCancellationConfirmation({
                     to: session.user.email,
                     userName: session.user.name,
-                    eventDate: booking.meetup?.date || "TBD",
-                    eventTime: booking.meetup?.time || "TBD",
-                    locationName: booking.meetup?.location?.name || "TBD",
-                    locationCity: booking.meetup?.location?.city || "TBD",
+                    eventDate: bookingWithDetails.meetup?.date || "TBD",
+                    eventTime: bookingWithDetails.meetup?.time || "TBD",
+                    locationName: bookingWithDetails.meetup?.location?.name || "TBD",
+                    locationCity: bookingWithDetails.meetup?.location?.city || "TBD",
                 });
             } catch (emailError) {
                 console.error("Failed to send cancellation email:", emailError);
@@ -332,13 +358,19 @@ export async function cancelBooking(bookingId: string) {
         }
     } catch (error) {
         console.error("Failed to cancel booking:", error);
+        
+        // If it's already a user-friendly error, re-throw it as-is
+        if (error instanceof Error && (error as any).userFriendly) {
+            throw error;
+        }
+        
         throw new Error(`Failed to cancel booking: ${error instanceof Error ? error.message : String(error)}`);
     }
 
     revalidatePath("/");
     revalidatePath("/dashboard");
     revalidatePath("/book"); // Revalidate to update capacity display
-    redirect("/");
+    redirect("/dashboard");
 }
 
 export async function updateUserProfile(formData: FormData) {
@@ -346,7 +378,9 @@ export async function updateUserProfile(formData: FormData) {
     console.log("Updating user profile");
 
     if (!session?.user?.id) {
-        throw new Error("Unauthorized");
+        const error = new Error("Please sign in to update your profile.");
+        (error as any).userFriendly = true;
+        throw error;
     }
 
     const languagePreference = formData.get("languagePreference") as string;
@@ -362,26 +396,35 @@ export async function updateUserProfile(formData: FormData) {
             updateData.languagePreference = languagePreference;
         }
 
-        if (country !== undefined) {
-            updateData.country = country || null; // Allow clearing the field
+        if (country !== undefined && country !== null) {
+            updateData.country = country.trim() || null; // Allow clearing the field
         }
 
         if (Object.keys(updateData).length === 0) {
-            throw new Error("No fields to update");
+            const error = new Error("No changes to save.");
+            (error as any).userFriendly = true;
+            throw error;
         }
 
         await db.update(users)
             .set(updateData)
             .where(eq(users.id, session.user.id));
 
-        console.log("Profile updated successfully");
+        console.log("Profile updated successfully:", updateData);
+        
+        revalidatePath("/profile");
+        revalidatePath("/dashboard");
+        return { success: true };
     } catch (error) {
         console.error("Failed to update profile:", error);
+        
+        // If it's already a user-friendly error, re-throw it as-is
+        if (error instanceof Error && (error as any).userFriendly) {
+            throw error;
+        }
+        
         throw new Error(`Failed to update profile: ${error instanceof Error ? error.message : String(error)}`);
     }
-
-    revalidatePath("/profile");
-    redirect("/profile");
 }
 
 export async function submitFeedback(formData: FormData) {

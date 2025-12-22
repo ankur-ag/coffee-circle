@@ -27,15 +27,15 @@ export function LocationFilter({ locations }: { locations: Location[] }) {
     }
 
     return (
-        <div className="flex items-center gap-2">
-            <label htmlFor="location-filter" className="text-sm font-medium text-gray-700">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+            <label htmlFor="location-filter" className="text-sm font-medium text-gray-700 whitespace-nowrap">
                 Filter by Location:
             </label>
             <select
                 id="location-filter"
                 value={currentLocationId}
                 onChange={handleChange}
-                className="border rounded px-3 py-2 text-sm bg-white"
+                className="border rounded px-3 py-2 text-sm bg-white w-full sm:w-auto"
             >
                 <option value="">All Locations</option>
                 {locations.map((loc) => (

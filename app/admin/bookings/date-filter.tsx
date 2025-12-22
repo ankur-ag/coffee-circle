@@ -21,8 +21,8 @@ export function DateFilter() {
     }
 
     return (
-        <div className="flex items-center gap-2">
-            <label htmlFor="date-filter" className="text-sm font-medium text-gray-700">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+            <label htmlFor="date-filter" className="text-sm font-medium text-gray-700 whitespace-nowrap">
                 Filter by Event Date:
             </label>
             <input
@@ -30,7 +30,7 @@ export function DateFilter() {
                 type="date"
                 value={currentDate}
                 onChange={handleChange}
-                className="border rounded px-3 py-2 text-sm bg-white"
+                className="border rounded px-3 py-2 text-sm bg-white w-full sm:w-auto"
             />
         </div>
     );

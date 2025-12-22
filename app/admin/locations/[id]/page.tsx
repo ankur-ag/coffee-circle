@@ -29,7 +29,7 @@ export default async function EditLocationPage({ params }: { params: Promise<{ i
         <div className="max-w-2xl mx-auto">
             <h1 className="text-2xl font-bold mb-6">Edit Location</h1>
 
-            <form action={updateCoffeeShop} className="bg-white p-6 rounded-lg shadow space-y-4">
+            <form action={updateCoffeeShop} className="bg-white p-4 sm:p-6 rounded-lg shadow space-y-4">
                 <input type="hidden" name="id" value={location.id} />
 
                 <div>

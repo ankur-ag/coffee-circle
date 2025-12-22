@@ -9,7 +9,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { LOCATION_REVEAL_DAYS } from "@/lib/config";
 
-import { cancelBooking } from "@/app/actions";
+import { CancelBookingButton } from "@/components/features/cancel-booking-button";
 
 export const runtime = "edge";
 
@@ -48,7 +48,7 @@ export default async function DashboardPage() {
 
     if (!booking) {
         return (
-            <main className="container mx-auto max-w-4xl px-4 py-12 md:px-6 text-center">
+            <main className="container mx-auto max-w-4xl px-5 py-12 md:px-6 text-center">
                 <h1 className="text-3xl font-bold">No Upcoming Meetups</h1>
                 <p className="mt-4 text-muted-foreground">You haven't booked any coffee meetups yet.</p>
                 <Button className="mt-8" asChild>
@@ -75,7 +75,7 @@ export default async function DashboardPage() {
     const COFFEE_BREWING_IMAGE = "https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?q=80&w=1000&auto=format&fit=crop";
 
     return (
-        <main className="container mx-auto max-w-4xl px-4 py-12 md:px-6">
+        <main className="container mx-auto max-w-4xl px-5 py-12 md:px-6">
             <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Your Ticket</h1>
@@ -270,11 +270,12 @@ export default async function DashboardPage() {
                         </CardContent>
                     </Card>
 
-                    <form action={cancelBooking.bind(null, booking.id)}>
-                        <Button variant="outline" className="w-full" type="submit">
-                            Cancel Booking
-                        </Button>
-                    </form>
+                    <CancelBookingButton
+                        bookingId={booking.id}
+                        eventDate={meetup.date}
+                        eventTime={meetup.time}
+                        locationName={location?.name}
+                    />
                 </div>
             </div>
         </main>

@@ -16,7 +16,7 @@ export default async function NewEventPage() {
         <div className="max-w-2xl mx-auto">
             <h1 className="text-2xl font-bold mb-6">Create New Event</h1>
 
-            <form action={createMeetup} className="bg-white p-6 rounded-lg shadow space-y-4">
+            <form action={createMeetup} className="bg-white p-4 sm:p-6 rounded-lg shadow space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
                     <input

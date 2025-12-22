@@ -64,10 +64,10 @@ export default async function AdminFeedbackPage() {
 
     return (
         <div>
-            <h1 className="text-3xl font-bold mb-6">Feedback & Ratings</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-6">Feedback & Ratings</h1>
 
             {/* Statistics */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <div className="bg-white rounded-lg shadow p-4">
                     <div className="text-sm text-gray-600">Total Feedback</div>
                     <div className="text-2xl font-bold">{totalFeedback}</div>
@@ -111,25 +111,26 @@ export default async function AdminFeedbackPage() {
 
             {/* Feedback List */}
             <div className="bg-white rounded-lg shadow overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                                 User
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                                 Rating
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                                 Comment
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">
                                 Event
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">
                                 Location
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">
                                 Submitted
                             </th>
                         </tr>
@@ -143,42 +144,42 @@ export default async function AdminFeedbackPage() {
                             </tr>
                         ) : (
                             allFeedback.map((item) => (
-                                <tr key={item.feedbackId}>
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                <tr key={item.feedbackId} className="hover:bg-gray-50">
+                                    <td className="px-3 sm:px-6 py-4">
                                         <div className="text-sm font-medium text-gray-900">
                                             {item.userName || "Unknown"}
                                         </div>
-                                        <div className="text-sm text-gray-500">{item.userEmail}</div>
+                                        <div className="text-sm text-gray-500 truncate max-w-[150px] sm:max-w-none">{item.userEmail}</div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                    <td className="px-3 sm:px-6 py-4">
                                         {renderStars(item.rating || 0)}
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <div className="text-sm text-gray-900 max-w-md">
+                                    <td className="px-3 sm:px-6 py-4">
+                                        <div className="text-sm text-gray-900 max-w-xs sm:max-w-md">
                                             {item.comment ? (
-                                                <p className="whitespace-pre-wrap">{item.comment}</p>
+                                                <p className="whitespace-pre-wrap line-clamp-3">{item.comment}</p>
                                             ) : (
                                                 <span className="text-gray-400 italic">No comment</span>
                                             )}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                    <td className="px-3 sm:px-6 py-4 text-sm hidden md:table-cell">
                                         <div>{item.meetupDate || "N/A"}</div>
                                         <div className="text-gray-500">{item.meetupTime || "N/A"}</div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                    <td className="px-3 sm:px-6 py-4 text-sm hidden lg:table-cell">
                                         {item.locationName ? (
                                             <>
-                                                {item.locationName}
+                                                <div>{item.locationName}</div>
                                                 {item.locationCity && (
-                                                    <span className="text-gray-500"> ({item.locationCity})</span>
+                                                    <div className="text-gray-500">{item.locationCity}</div>
                                                 )}
                                             </>
                                         ) : (
                                             <span className="text-gray-400">N/A</span>
                                         )}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 hidden sm:table-cell">
                                         {item.feedbackCreatedAt
                                             ? new Date(item.feedbackCreatedAt).toLocaleDateString("en-US", {
                                                   year: "numeric",
@@ -193,7 +194,8 @@ export default async function AdminFeedbackPage() {
                             ))
                         )}
                     </tbody>
-                </table>
+                    </table>
+                </div>
             </div>
         </div>
     );

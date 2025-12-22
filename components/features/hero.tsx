@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ScrollToSection } from "./scroll-to-section";
 
 export function Hero() {
     return (
-        <section className="relative flex min-h-[80vh] flex-col items-center justify-center overflow-hidden bg-background px-4 py-24 text-center md:px-6">
+        <section className="relative flex min-h-[80vh] flex-col items-center justify-center overflow-hidden bg-background px-5 py-24 text-center md:px-6">
             <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-background to-background opacity-50" />
 
             <div className="container mx-auto flex max-w-4xl flex-col items-center gap-6">
@@ -27,9 +28,14 @@ export function Hero() {
                             Join the Circle
                         </Link>
                     </Button>
-                    <Button size="lg" variant="outline" className="h-12 px-8 text-base">
+                    <ScrollToSection
+                        href="#how-it-works"
+                        variant="outline"
+                        size="lg"
+                        className="h-12 px-8 text-base"
+                    >
                         How it works
-                    </Button>
+                    </ScrollToSection>
                 </div>
             </div>
 
