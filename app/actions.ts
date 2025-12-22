@@ -403,19 +403,27 @@ export async function submitFeedback(formData: FormData) {
     const db = getDb();
 
     try {
-        // Verify the booking belongs to the user
-        const booking = await db.query.bookings.findFirst({
-            where: eq(bookings.id, bookingId),
-        }) as any;
+        // Verify the booking belongs to the user (Edge Runtime compatible)
+        const bookingResult = await db
+            .select()
+            .from(bookings)
+            .where(eq(bookings.id, bookingId))
+            .limit(1) as any[];
 
-        if (!booking || booking.userId !== session.user.id) {
-            throw new Error("Unauthorized: This booking does not belong to you");
+        if (bookingResult.length === 0 || bookingResult[0].userId !== session.user.id) {
+            const error = new Error("This booking does not belong to you.");
+            (error as any).userFriendly = true;
+            throw error;
         }
 
-        // Check if feedback already exists
-        const existingFeedback = await db.query.feedback.findFirst({
-            where: eq(feedback.bookingId, bookingId),
-        }) as any;
+        // Check if feedback already exists (Edge Runtime compatible)
+        const existingFeedbackResult = await db
+            .select()
+            .from(feedback)
+            .where(eq(feedback.bookingId, bookingId))
+            .limit(1) as any[];
+        
+        const existingFeedback = existingFeedbackResult.length > 0 ? existingFeedbackResult[0] : null;
 
         if (existingFeedback) {
             // Update existing feedback
@@ -439,7 +447,14 @@ export async function submitFeedback(formData: FormData) {
         }
     } catch (error) {
         console.error("Failed to submit feedback:", error);
-        throw new Error(`Failed to submit feedback: ${error instanceof Error ? error.message : String(error)}`);
+        
+        // If it's already a user-friendly error, re-throw it as-is
+        if (error instanceof Error && (error as any).userFriendly) {
+            throw error;
+        }
+        
+        // For other errors, provide a user-friendly message
+        throw new Error("Unable to submit your feedback. Please try again.");
     }
 
     revalidatePath("/past-events");
