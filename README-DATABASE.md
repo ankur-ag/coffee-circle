@@ -71,3 +71,4 @@ To verify which database you're connected to, check your `POSTGRES_URL`:
 - Production: Check Vercel Dashboard → Environment Variables
 
 If they're the same, that's why test events show up in production!
+

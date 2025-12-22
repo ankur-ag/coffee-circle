@@ -97,3 +97,4 @@ To verify you're using separate databases:
 Make sure to run migrations on both databases:
 - Dev database: Run locally with `POSTGRES_URL` in `.env.local` pointing to dev database
 - Prod database: Run via Vercel or manually with production connection string
+

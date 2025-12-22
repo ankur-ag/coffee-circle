@@ -13,3 +13,4 @@ export const LOCATION_REVEAL_DAYS: number = 2;
  * Change this value to adjust when reminder emails are sent
  */
 export const REMINDER_EMAIL_DAYS: number = 2;
+

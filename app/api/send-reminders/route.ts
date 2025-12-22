@@ -73,7 +73,7 @@ export async function GET(request: Request) {
             message: "Reminder emails processed",
             emailsSent,
             emailsFailed,
-            eventsProcessed: tomorrowEvents.length,
+            eventsProcessed: targetEvents.length,
         });
     } catch (error) {
         console.error("Error processing reminder emails:", error);
@@ -86,3 +86,4 @@ export async function GET(request: Request) {
         );
     }
 }
+
