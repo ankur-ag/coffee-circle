@@ -2,6 +2,7 @@ import { getDb } from "@/lib/db";
 import { meetups, coffeeShops, bookings } from "@/lib/schema";
 import { eq, sql } from "drizzle-orm";
 import Link from "next/link";
+import { isMeetupInFuture } from "@/lib/data";
 
 export const runtime = "edge";
 
@@ -72,44 +73,52 @@ export default async function AdminEventsPage() {
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                        {allMeetups.map((meetup) => (
-                            <tr key={meetup.id} className="hover:bg-gray-50">
-                                <td className="px-3 sm:px-6 py-4 text-sm">
-                                    {meetup.date}
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 text-sm">
-                                    {meetup.time}
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 text-sm hidden sm:table-cell">
-                                    <div>{meetup.locationName}</div>
-                                    <div className="text-gray-500">{meetup.locationCity}</div>
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 text-sm">
-                                    {meetup.language === "zh" ? "🇨🇳 中文" : "🇬🇧 English"}
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 text-sm">
-                                    {meetup.attendeeCount}
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 text-sm hidden md:table-cell">
-                                    <span
-                                        className={`px-2 py-1 rounded text-xs ${meetup.status === "open"
-                                                ? "bg-green-100 text-green-800"
-                                                : "bg-gray-100 text-gray-800"
+                        {allMeetups.map((meetup) => {
+                            const isExpired = !isMeetupInFuture(meetup);
+                            const displayStatus = isExpired ? "expired" : meetup.status;
+                            
+                            return (
+                                <tr key={meetup.id} className={`hover:bg-gray-50 ${isExpired ? "opacity-60" : ""}`}>
+                                    <td className="px-3 sm:px-6 py-4 text-sm">
+                                        {meetup.date}
+                                    </td>
+                                    <td className="px-3 sm:px-6 py-4 text-sm">
+                                        {meetup.time}
+                                    </td>
+                                    <td className="px-3 sm:px-6 py-4 text-sm hidden sm:table-cell">
+                                        <div>{meetup.locationName}</div>
+                                        <div className="text-gray-500">{meetup.locationCity}</div>
+                                    </td>
+                                    <td className="px-3 sm:px-6 py-4 text-sm">
+                                        {meetup.language === "zh" ? "🇨🇳 中文" : "🇬🇧 English"}
+                                    </td>
+                                    <td className="px-3 sm:px-6 py-4 text-sm">
+                                        {meetup.attendeeCount}
+                                    </td>
+                                    <td className="px-3 sm:px-6 py-4 text-sm hidden md:table-cell">
+                                        <span
+                                            className={`px-2 py-1 rounded text-xs ${
+                                                isExpired
+                                                    ? "bg-red-100 text-red-800"
+                                                    : meetup.status === "open"
+                                                    ? "bg-green-100 text-green-800"
+                                                    : "bg-gray-100 text-gray-800"
                                             }`}
-                                    >
-                                        {meetup.status}
-                                    </span>
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 text-sm">
-                                    <Link
-                                        href={`/admin/events/${meetup.id}`}
-                                        className="text-primary hover:underline"
-                                    >
-                                        Edit
-                                    </Link>
-                                </td>
-                            </tr>
-                        ))}
+                                        >
+                                            {displayStatus}
+                                        </span>
+                                    </td>
+                                    <td className="px-3 sm:px-6 py-4 text-sm">
+                                        <Link
+                                            href={`/admin/events/${meetup.id}`}
+                                            className="text-primary hover:underline"
+                                        >
+                                            Edit
+                                        </Link>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                     </table>
                 </div>

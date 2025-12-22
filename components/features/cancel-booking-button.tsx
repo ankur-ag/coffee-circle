@@ -58,9 +58,6 @@ export function CancelBookingButton({ bookingId, eventDate, eventTime, locationN
                             <p className="font-medium text-foreground">Event Details:</p>
                             <p className="text-muted-foreground">Date: {eventDate}</p>
                             <p className="text-muted-foreground">Time: {eventTime}</p>
-                            {locationName && (
-                                <p className="text-muted-foreground">Location: {locationName}</p>
-                            )}
                         </div>
                     </div>
                     <div className="flex gap-2">
