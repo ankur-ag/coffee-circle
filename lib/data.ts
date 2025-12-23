@@ -1,6 +1,6 @@
 import { getDb } from "@/lib/db";
 import { bookings, meetups, coffeeShops, users, feedback } from "@/lib/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, inArray } from "drizzle-orm";
 import { REMINDER_EMAIL_DAYS } from "@/lib/config";
 
 /**
@@ -28,6 +28,49 @@ export function isBookingActive(booking: any): boolean {
     if (booking.status !== "confirmed") return false;
     
     return isMeetupInFuture(booking.meetup);
+}
+
+/**
+ * Check if user has an active booking (Edge Runtime compatible)
+ * Returns true if user has any confirmed booking for a future meetup
+ */
+export async function hasActiveBooking(userId: string): Promise<boolean> {
+    const db = getDb();
+    
+    // Get all confirmed bookings for the user (Edge Runtime compatible)
+    const confirmedBookings = await db
+        .select()
+        .from(bookings)
+        .where(and(
+            eq(bookings.userId, userId),
+            eq(bookings.status, "confirmed")
+        )) as any[];
+    
+    if (confirmedBookings.length === 0) {
+        return false;
+    }
+    
+    // Get meetups for these bookings to check if they're in the future
+    const meetupIds = confirmedBookings.map((b: any) => b.meetupId);
+    
+    if (meetupIds.length === 0) {
+        return false;
+    }
+    
+    const meetupsResult = await db
+        .select()
+        .from(meetups)
+        .where(inArray(meetups.id, meetupIds)) as any[];
+    
+    // Check if any booking is for a future meetup
+    for (const booking of confirmedBookings) {
+        const meetup = meetupsResult.find((m: any) => m.id === booking.meetupId);
+        if (meetup && isMeetupInFuture(meetup)) {
+            return true;
+        }
+    }
+    
+    return false;
 }
 
 export async function getUserBooking(userId: string) {
