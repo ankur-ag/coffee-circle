@@ -186,18 +186,55 @@ export async function cancelBookingAdmin(bookingId: string) {
 
     const db = getDb();
 
-    // Get booking details before update for email
-    const booking = await db.query.bookings.findFirst({
-        where: (bookings, { eq }) => eq(bookings.id, bookingId),
-        with: {
-            user: true,
-            meetup: {
-                with: {
-                    location: true,
-                },
-            },
-        },
-    });
+    // Get booking details before update for email (Edge Runtime compatible)
+    const [bookingResult] = await db
+        .select()
+        .from(bookings)
+        .where(eq(bookings.id, bookingId))
+        .limit(1) as any[];
+
+    if (!bookingResult) {
+        throw new Error("Booking not found");
+    }
+
+    // Fetch related data in parallel
+    const [userResult, meetupResult] = await Promise.all([
+        bookingResult.userId
+            ? db
+                  .select()
+                  .from(users)
+                  .where(eq(users.id, bookingResult.userId))
+                  .limit(1)
+            : Promise.resolve([]),
+        bookingResult.meetupId
+            ? db
+                  .select()
+                  .from(meetups)
+                  .where(eq(meetups.id, bookingResult.meetupId))
+                  .limit(1)
+            : Promise.resolve([]),
+    ]) as [any[], any[]];
+
+    const user = userResult.length > 0 ? userResult[0] : null;
+    const meetup = meetupResult.length > 0 ? meetupResult[0] : null;
+
+    // Get location if meetup has one
+    let location = null;
+    if (meetup?.locationId) {
+        const [locationResult] = await db
+            .select()
+            .from(coffeeShops)
+            .where(eq(coffeeShops.id, meetup.locationId))
+            .limit(1) as any[];
+        location = locationResult || null;
+    }
+
+    // Combine into booking object
+    const booking = {
+        ...bookingResult,
+        user,
+        meetup: meetup ? { ...meetup, location } : null,
+    };
 
     // Note: When a booking with +1 is cancelled, the headcount automatically decreases by 2
     // because the capacity counting only includes confirmed bookings

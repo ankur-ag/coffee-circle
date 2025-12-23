@@ -38,7 +38,7 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
     const showPastEvents = showPast === "true";
     const filteredMeetups = showPastEvents 
         ? allMeetups 
-        : allMeetups.filter((meetup) => isMeetupInFuture(meetup));
+        : allMeetups.filter((meetup: typeof allMeetups[0]) => isMeetupInFuture(meetup));
 
     return (
         <div>
@@ -84,7 +84,7 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredMeetups.map((meetup) => {
+                        {filteredMeetups.map((meetup: typeof filteredMeetups[0]) => {
                             const isExpired = !isMeetupInFuture(meetup);
                             const displayStatus = isExpired ? "expired" : meetup.status;
                             

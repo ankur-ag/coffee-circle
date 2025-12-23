@@ -26,7 +26,7 @@ async function getLocations() {
                 features: coffeeShops.features,
             })
             .from(coffeeShops);
-        return locations.map((loc) => ({ ...loc, googleMapsLink: null }));
+        return locations.map((loc: typeof locations[0]) => ({ ...loc, googleMapsLink: null }));
     }
 }
 
@@ -68,7 +68,7 @@ export default async function AdminLocationsPage() {
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                        {locations.map((location) => (
+                        {locations.map((location: typeof locations[0]) => (
                             <tr key={location.id} className="hover:bg-gray-50">
                                 <td className="px-3 sm:px-6 py-4 text-sm font-medium">
                                     {location.name}

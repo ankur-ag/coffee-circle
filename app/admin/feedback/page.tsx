@@ -55,11 +55,11 @@ export default async function AdminFeedbackPage() {
     const totalFeedback = allFeedback.length;
     const averageRating =
         totalFeedback > 0
-            ? (allFeedback.reduce((sum, f) => sum + (f.rating || 0), 0) / totalFeedback).toFixed(1)
+            ? (allFeedback.reduce((sum: number, f: typeof allFeedback[0]) => sum + (f.rating || 0), 0) / totalFeedback).toFixed(1)
             : "0.0";
     const ratingDistribution = [5, 4, 3, 2, 1].map((rating) => ({
         rating,
-        count: allFeedback.filter((f) => f.rating === rating).length,
+        count: allFeedback.filter((f: typeof allFeedback[0]) => f.rating === rating).length,
     }));
 
     return (
@@ -83,7 +83,7 @@ export default async function AdminFeedbackPage() {
                 <div className="bg-white rounded-lg shadow p-4">
                     <div className="text-sm text-gray-600">With Comments</div>
                     <div className="text-2xl font-bold">
-                        {allFeedback.filter((f) => f.comment).length}
+                        {allFeedback.filter((f: typeof allFeedback[0]) => f.comment).length}
                     </div>
                 </div>
             </div>
@@ -143,7 +143,7 @@ export default async function AdminFeedbackPage() {
                                 </td>
                             </tr>
                         ) : (
-                            allFeedback.map((item) => (
+                            allFeedback.map((item: typeof allFeedback[0]) => (
                                 <tr key={item.feedbackId} className="hover:bg-gray-50">
                                     <td className="px-3 sm:px-6 py-4">
                                         <div className="text-sm font-medium text-gray-900">

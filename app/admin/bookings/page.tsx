@@ -95,7 +95,7 @@ export default async function AdminBookingsPage({ searchParams }: { searchParams
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                        {allBookings.map((booking) => (
+                        {allBookings.map((booking: typeof allBookings[0]) => (
                             <tr key={booking.id} className="hover:bg-gray-50">
                                 <td className="px-3 sm:px-6 py-4">
                                     <div className="text-sm font-medium text-gray-900">{booking.userName}</div>

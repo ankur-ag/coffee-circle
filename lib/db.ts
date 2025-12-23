@@ -4,7 +4,7 @@ import * as schema from "./schema";
 
 // Cache the database connection to avoid creating new pools on every call
 // This significantly improves performance by reusing connections
-let cachedDb: ReturnType<typeof drizzle> | null = null;
+let cachedDb: any = null;
 let cachedConnectionString: string | null = null;
 
 /**

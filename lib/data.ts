@@ -336,23 +336,48 @@ export async function getFeedbackForBooking(bookingId: string) {
 
 export async function getBookingById(bookingId: string, userId: string) {
     const db = getDb();
-    const booking = await db.query.bookings.findFirst({
-        where: eq(bookings.id, bookingId),
-        with: {
-            meetup: {
-                with: {
-                    location: true,
-                }
-            }
-        }
-    }) as any;
+    
+    // Get booking (Edge Runtime compatible)
+    const [bookingResult] = await db
+        .select()
+        .from(bookings)
+        .where(eq(bookings.id, bookingId))
+        .limit(1) as any[];
 
     // Verify the booking belongs to the user
-    if (!booking || booking.userId !== userId) {
+    if (!bookingResult || bookingResult.userId !== userId) {
         return null;
     }
 
-    return booking;
+    // Fetch related data in parallel
+    const [meetupResult] = await Promise.all([
+        bookingResult.meetupId
+            ? db
+                  .select()
+                  .from(meetups)
+                  .where(eq(meetups.id, bookingResult.meetupId))
+                  .limit(1)
+            : Promise.resolve([]),
+    ]) as [any[]];
+
+    const meetup = meetupResult.length > 0 ? meetupResult[0] : null;
+
+    // Get location if meetup has one
+    let location = null;
+    if (meetup?.locationId) {
+        const [locationResult] = await db
+            .select()
+            .from(coffeeShops)
+            .where(eq(coffeeShops.id, meetup.locationId))
+            .limit(1) as any[];
+        location = locationResult || null;
+    }
+
+    // Combine into booking object
+    return {
+        ...bookingResult,
+        meetup: meetup ? { ...meetup, location } : null,
+    };
 }
 
 /**

@@ -45,7 +45,7 @@ export default async function NewEventPage() {
                         className="w-full border rounded px-3 py-2"
                     >
                         <option value="">Select a location</option>
-                        {locations.map((loc) => (
+                        {locations.map((loc: typeof locations[0]) => (
                             <option key={loc.id} value={loc.id}>
                                 {loc.name} ({loc.city})
                             </option>
