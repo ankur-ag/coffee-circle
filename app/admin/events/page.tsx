@@ -1,6 +1,6 @@
 import { getDb } from "@/lib/db";
 import { meetups, coffeeShops, bookings } from "@/lib/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, desc } from "drizzle-orm";
 import Link from "next/link";
 import { isMeetupInFuture } from "@/lib/data";
 
@@ -24,7 +24,7 @@ async function getMeetups() {
         .leftJoin(coffeeShops, eq(meetups.locationId, coffeeShops.id))
         .leftJoin(bookings, eq(meetups.id, bookings.meetupId))
         .groupBy(meetups.id, coffeeShops.name, coffeeShops.city)
-        .orderBy(meetups.date);
+        .orderBy(desc(meetups.date));
 
     return result;
 }
