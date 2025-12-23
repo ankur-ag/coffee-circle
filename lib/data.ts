@@ -129,8 +129,10 @@ export async function isMeetupFull(meetupId: string, includePlusOne: boolean = f
     const db = getDb();
     
     // Get meetup to retrieve capacity if not provided
-    let meetupCapacity = capacity;
-    if (meetupCapacity === undefined) {
+    let meetupCapacity: number;
+    if (capacity !== undefined) {
+        meetupCapacity = capacity;
+    } else {
         const meetupResult = await db
             .select()
             .from(meetups)
@@ -138,7 +140,7 @@ export async function isMeetupFull(meetupId: string, includePlusOne: boolean = f
             .limit(1) as any[];
         
         if (meetupResult.length > 0) {
-            meetupCapacity = meetupResult[0].capacity ?? 6;
+            meetupCapacity = (meetupResult[0].capacity as number | undefined) ?? 6;
         } else {
             meetupCapacity = 6; // Default if meetup not found
         }
