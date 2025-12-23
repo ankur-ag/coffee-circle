@@ -79,6 +79,7 @@ export const meetups = pgTable("meetups", {
     locationId: text("location_id").references(() => coffeeShops.id),
     status: text("status").notNull().default("open"),
     language: text("language").notNull().default("en"),
+    capacity: integer("capacity").notNull().default(6), // Dynamic capacity, default 6
 });
 
 export const bookings = pgTable("bookings", {

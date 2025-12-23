@@ -158,13 +158,16 @@ export async function bookMeetup(formData: FormData) {
             throw error;
         }
 
-        // Check if event is full (6 attendees limit for non-admins, including +1 if applicable)
-        const isFull = await isMeetupFull(meetupId, hasPlusOne);
+        // Get capacity from meetup (default to 6 if not set)
+        const meetupCapacity = meetupData.capacity ?? 6;
+        
+        // Check if event is full (dynamic capacity limit for non-admins, including +1 if applicable)
+        const isFull = await isMeetupFull(meetupId, hasPlusOne, meetupCapacity);
         const isAdmin = session.user.role === "admin";
 
         if (isFull && !isAdmin) {
             const plusOneText = hasPlusOne ? " (including your +1)" : "";
-            const error = new Error(`This event is full${plusOneText}. Maximum capacity is 6 attendees. Please select another event.`);
+            const error = new Error(`This event is full${plusOneText}. Maximum capacity is ${meetupCapacity} attendees. Please select another event.`);
             (error as any).userFriendly = true;
             throw error;
         }

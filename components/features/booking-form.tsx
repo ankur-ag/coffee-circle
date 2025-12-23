@@ -97,18 +97,21 @@ export function BookingForm({ meetups }: { meetups: Meetup[] }) {
                 <div className="grid gap-4 sm:grid-cols-2">
                     {meetups.map((meetup) => {
                         const attendeeCount = meetup.attendeeCount ?? meetup.attendees.length;
-                        const full = meetup.isFull ?? attendeeCount >= 6;
+                        const capacity = (meetup as any).capacity ?? 6;
+                        const full = meetup.isFull ?? attendeeCount >= capacity;
                         const canSelect = !full || selectedMeetupId === meetup.id;
 
                         return (
                             <Card
                                 key={meetup.id}
                                 className={cn(
-                                    "transition-all",
+                                    "transition-all duration-200",
                                     full && !canSelect
                                         ? "opacity-60 cursor-not-allowed"
-                                        : "cursor-pointer hover:border-primary",
-                                    selectedMeetupId === meetup.id ? "border-primary ring-1 ring-primary" : ""
+                                        : "cursor-pointer hover:border-primary hover:shadow-md",
+                                    selectedMeetupId === meetup.id 
+                                        ? "border-primary border-2 ring-2 ring-primary ring-offset-2 bg-primary/5 shadow-lg scale-[1.02]" 
+                                        : "border"
                                 )}
                                 onClick={() => {
                                     if (!full || canSelect) {
@@ -141,7 +144,7 @@ export function BookingForm({ meetups }: { meetups: Meetup[] }) {
                                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                         <Users className="h-4 w-4" />
                                         <span>
-                                            {attendeeCount} / 6 {full ? "(Full)" : "people attending"}
+                                            {attendeeCount} / {capacity} {full ? "(Full)" : "people attending"}
                                         </span>
                                     </div>
                                     {full && (
@@ -189,8 +192,9 @@ export function BookingForm({ meetups }: { meetups: Meetup[] }) {
                 {(() => {
                     const selectedMeetup = meetups.find((m) => m.id === selectedMeetupId);
                     const selectedAttendeeCount = selectedMeetup?.attendeeCount ?? selectedMeetup?.attendees.length ?? 0;
+                    const selectedCapacity = (selectedMeetup as any)?.capacity ?? 6;
                     // Check if adding +1 would make it full
-                    const wouldBeFull = hasPlusOne ? selectedAttendeeCount + 1 >= 6 : selectedAttendeeCount >= 6;
+                    const wouldBeFull = hasPlusOne ? selectedAttendeeCount + 1 >= selectedCapacity : selectedAttendeeCount >= selectedCapacity;
                     const canBook = selectedMeetupId && !wouldBeFull;
 
                     return (

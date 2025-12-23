@@ -106,11 +106,15 @@ export async function getUpcomingMeetups() {
                 return count + (hasPlusOne ? 2 : 1);
             }, 0);
 
+            // Get capacity from meetup, default to 6 if not set
+            const capacity = meetup.capacity ?? 6;
+
             return {
                 ...meetup,
                 attendees: confirmedBookings || [],
                 attendeeCount: totalAttendees,
-                isFull: totalAttendees >= 6,
+                capacity,
+                isFull: totalAttendees >= capacity,
             };
         })
     );
@@ -119,10 +123,27 @@ export async function getUpcomingMeetups() {
 }
 
 /**
- * Check if a meetup is full (has 6 or more confirmed attendees, including +1s)
+ * Check if a meetup is full (has reached capacity, including +1s)
  */
-export async function isMeetupFull(meetupId: string, includePlusOne: boolean = false): Promise<boolean> {
+export async function isMeetupFull(meetupId: string, includePlusOne: boolean = false, capacity?: number): Promise<boolean> {
     const db = getDb();
+    
+    // Get meetup to retrieve capacity if not provided
+    let meetupCapacity = capacity;
+    if (meetupCapacity === undefined) {
+        const meetupResult = await db
+            .select()
+            .from(meetups)
+            .where(eq(meetups.id, meetupId))
+            .limit(1) as any[];
+        
+        if (meetupResult.length > 0) {
+            meetupCapacity = meetupResult[0].capacity ?? 6;
+        } else {
+            meetupCapacity = 6; // Default if meetup not found
+        }
+    }
+    
     // Use standard select for Edge Runtime compatibility
     const confirmedBookings = await db
         .select()
@@ -143,7 +164,7 @@ export async function isMeetupFull(meetupId: string, includePlusOne: boolean = f
     // If checking with a potential +1, add 1 more to the count
     const checkCount = includePlusOne ? totalAttendees + 1 : totalAttendees;
     
-    return checkCount >= 6;
+    return checkCount >= meetupCapacity;
 }
 
 export async function getPastBookings(userId: string) {

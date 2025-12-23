@@ -16,6 +16,7 @@ async function getMeetup(id: string) {
             locationId: meetups.locationId,
             status: meetups.status,
             language: meetups.language,
+            capacity: meetups.capacity,
         })
         .from(meetups)
         .where(eq(meetups.id, id))
@@ -114,6 +115,19 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
                         <option value="cancelled">Cancelled</option>
                         <option value="past">Past</option>
                     </select>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Capacity</label>
+                    <input
+                        type="number"
+                        name="capacity"
+                        min="1"
+                        defaultValue={meetup.capacity ?? 6}
+                        required
+                        className="w-full border rounded px-3 py-2"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Maximum number of attendees</p>
                 </div>
 
                 <div className="pt-4 flex justify-end gap-2">

@@ -38,9 +38,15 @@ export async function createMeetup(formData: FormData) {
     const time = formData.get("time") as string;
     const locationId = formData.get("locationId") as string;
     const language = formData.get("language") as string;
+    const capacityStr = formData.get("capacity") as string;
+    const capacity = capacityStr ? parseInt(capacityStr, 10) : 6;
 
     if (!date || !time || !locationId || !language) {
         throw new Error("Missing required fields");
+    }
+
+    if (isNaN(capacity) || capacity < 1) {
+        throw new Error("Capacity must be a positive number");
     }
 
     const db = getDb();
@@ -51,6 +57,7 @@ export async function createMeetup(formData: FormData) {
         locationId,
         language,
         status: "open",
+        capacity,
     });
 
     revalidatePath("/admin/events");
@@ -70,9 +77,15 @@ export async function updateMeetup(formData: FormData) {
     const locationId = formData.get("locationId") as string;
     const language = formData.get("language") as string;
     const status = formData.get("status") as string;
+    const capacityStr = formData.get("capacity") as string;
+    const capacity = capacityStr ? parseInt(capacityStr, 10) : 6;
 
     if (!id || !date || !time || !locationId || !language || !status) {
         throw new Error("Missing required fields");
+    }
+
+    if (isNaN(capacity) || capacity < 1) {
+        throw new Error("Capacity must be a positive number");
     }
 
     const db = getDb();
@@ -82,6 +95,7 @@ export async function updateMeetup(formData: FormData) {
         locationId,
         language,
         status,
+        capacity,
     }).where(eq(meetups.id, id));
 
     revalidatePath("/admin/events");
