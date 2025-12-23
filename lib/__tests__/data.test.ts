@@ -830,9 +830,11 @@ describe("getPastBookings - Feedback Scenarios", () => {
 });
 
 describe("getUnratedPastBooking - Feedback Loop Prevention", () => {
-    let mockQuery: any;
     let mockSelect: any;
-    let mockFrom: any;
+    let mockFromBookings: any;
+    let mockFromMeetups: any;
+    let mockFromLocations: any;
+    let mockFromFeedback: any;
     let mockWhere: any;
     let mockLimit: any;
     let mockDb: any;
@@ -840,21 +842,36 @@ describe("getUnratedPastBooking - Feedback Loop Prevention", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         
-        // Mock db.query.bookings.findMany for getPastBookings
-        mockQuery = {
-            findMany: vi.fn(),
-        };
-        
-        // Mock db.select().from().where().limit() for getFeedbackForBooking
+        // Mock db.select().from().where() for getPastBookings (3 queries in parallel)
+        // Mock db.select().from().where() for getUnratedPastBooking's feedback query
+        mockWhere = vi.fn();
         mockLimit = vi.fn();
-        mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
-        mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
+        
+        // For getPastBookings: bookings (with where), meetups (no where), locations (no where)
+        mockFromBookings = vi.fn().mockReturnValue({ where: mockWhere });
+        mockFromMeetups = vi.fn();
+        mockFromLocations = vi.fn();
+        
+        // For getUnratedPastBooking's feedback query: feedback (with where, no limit needed)
+        // getUnratedPastBooking uses: db.select().from(feedback).where(inArray(...))
+        // This returns an array directly, not a limit chain
+        // We'll use mockWhere for this too, but it will be the 4th call
+        mockFromFeedback = vi.fn().mockReturnValue({ where: mockWhere });
+        
+        // mockFrom will return different mocks based on the table
+        // getPastBookings makes 3 calls, then getUnratedPastBooking makes 1 more
+        let callCount = 0;
+        const mockFrom = vi.fn().mockImplementation(() => {
+            callCount++;
+            if (callCount === 1) return mockFromBookings(); // bookings (getPastBookings)
+            if (callCount === 2) return mockFromMeetups(); // meetups (getPastBookings)
+            if (callCount === 3) return mockFromLocations(); // locations (getPastBookings)
+            return mockFromFeedback(); // feedback (getUnratedPastBooking)
+        });
+        
         mockSelect = vi.fn().mockReturnValue({ from: mockFrom });
         
         mockDb = {
-            query: {
-                bookings: mockQuery,
-            },
             select: mockSelect,
         };
         
@@ -874,18 +891,27 @@ describe("getUnratedPastBooking - Feedback Loop Prevention", () => {
                 userId,
                 meetupId: "meetup-456",
                 status: "confirmed",
-                meetup: {
-                    id: "meetup-456",
-                    date: futureDateStr,
-                    status: "cancelled",
-                    location: null,
-                },
+                createdAt: new Date(),
             },
         ];
 
-        mockQuery.findMany.mockResolvedValueOnce(allBookings);
-        // No feedback exists
-        mockWhere.mockResolvedValueOnce([]);
+        const allMeetups = [
+            {
+                id: "meetup-456",
+                date: futureDateStr,
+                status: "cancelled",
+                locationId: null,
+            },
+        ];
+
+        const allLocations: any[] = [];
+
+        // Mock getPastBookings (3 parallel queries)
+        mockWhere.mockResolvedValueOnce(allBookings);
+        mockFromMeetups.mockResolvedValueOnce(allMeetups);
+        mockFromLocations.mockResolvedValueOnce(allLocations);
+        // Mock getUnratedPastBooking's feedback query (4th call to mockWhere)
+        mockWhere.mockResolvedValueOnce([]); // No feedback exists
 
         const { getUnratedPastBooking } = await import("../data");
         const result = await getUnratedPastBooking(userId);
@@ -906,26 +932,33 @@ describe("getUnratedPastBooking - Feedback Loop Prevention", () => {
                 userId,
                 meetupId: "meetup-456",
                 status: "confirmed",
-                meetup: {
-                    id: "meetup-456",
-                    date: pastDateStr,
-                    status: "open",
-                    location: null,
-                },
+                createdAt: new Date(),
             },
         ];
 
-        // Mock getPastBookings (which calls db.query.bookings.findMany)
-        mockQuery.findMany.mockResolvedValueOnce(allBookings);
-        // Mock getFeedbackForBooking (which calls db.select().from().where().limit())
-        mockLimit.mockResolvedValueOnce([]);
+        const allMeetups = [
+            {
+                id: "meetup-456",
+                date: pastDateStr,
+                status: "open",
+                locationId: null,
+            },
+        ];
+
+        const allLocations: any[] = [];
+
+        // Mock getPastBookings (3 parallel queries)
+        mockWhere.mockResolvedValueOnce(allBookings);
+        mockFromMeetups.mockResolvedValueOnce(allMeetups);
+        mockFromLocations.mockResolvedValueOnce(allLocations);
+        // Mock getUnratedPastBooking's feedback query (4th call to mockWhere)
+        mockWhere.mockResolvedValueOnce([]); // No feedback exists
 
         const { getUnratedPastBooking } = await import("../data");
         const result = await getUnratedPastBooking(userId);
 
         // Should return past event that needs feedback
         expect(result).toBe("booking-123");
-        expect(mockQuery.findMany).toHaveBeenCalled();
         expect(mockSelect).toHaveBeenCalled();
     });
 
@@ -941,21 +974,27 @@ describe("getUnratedPastBooking - Feedback Loop Prevention", () => {
                 userId,
                 meetupId: "meetup-456",
                 status: "confirmed",
-                meetup: {
-                    id: "meetup-456",
-                    date: pastDateStr,
-                    status: "open",
-                    location: null,
-                },
+                createdAt: new Date(),
             },
         ];
 
-        // Mock getPastBookings
-        mockQuery.findMany.mockResolvedValueOnce(allBookings);
-        // Mock getFeedbackForBooking - feedback already exists
-        // getFeedbackForBooking uses [existingFeedback] = await db.select()...limit(1)
-        // So limit returns an array with one item
-        mockLimit.mockResolvedValueOnce([
+        const allMeetups = [
+            {
+                id: "meetup-456",
+                date: pastDateStr,
+                status: "open",
+                locationId: null,
+            },
+        ];
+
+        const allLocations: any[] = [];
+
+        // Mock getPastBookings (3 parallel queries)
+        mockWhere.mockResolvedValueOnce(allBookings);
+        mockFromMeetups.mockResolvedValueOnce(allMeetups);
+        mockFromLocations.mockResolvedValueOnce(allLocations);
+        // Mock getUnratedPastBooking's feedback query (4th call to mockWhere) - feedback already exists
+        mockWhere.mockResolvedValueOnce([
             { id: "feedback-123", bookingId: "booking-123", rating: 5 },
         ]);
 
@@ -964,7 +1003,6 @@ describe("getUnratedPastBooking - Feedback Loop Prevention", () => {
 
         // Should NOT return events that already have feedback
         expect(result).toBeNull();
-        expect(mockQuery.findMany).toHaveBeenCalled();
         expect(mockSelect).toHaveBeenCalled();
     });
 
@@ -981,17 +1019,26 @@ describe("getUnratedPastBooking - Feedback Loop Prevention", () => {
                 userId,
                 meetupId: "meetup-456",
                 status: "confirmed",
-                meetup: {
-                    id: "meetup-456",
-                    date: futureDateStr,
-                    status: "open",
-                    location: null,
-                },
+                createdAt: new Date(),
             },
         ];
 
-        mockQuery.findMany.mockResolvedValueOnce(allBookings);
-        // No feedback exists
+        const allMeetups = [
+            {
+                id: "meetup-456",
+                date: futureDateStr,
+                status: "open",
+                locationId: null,
+            },
+        ];
+
+        const allLocations: any[] = [];
+
+        // Mock getPastBookings (3 parallel queries)
+        mockWhere.mockResolvedValueOnce(allBookings);
+        mockFromMeetups.mockResolvedValueOnce(allMeetups);
+        mockFromLocations.mockResolvedValueOnce(allLocations);
+        // Mock getUnratedPastBooking's feedback query (4th call to mockWhere) - no feedback exists
         mockWhere.mockResolvedValueOnce([]);
 
         const { getUnratedPastBooking } = await import("../data");
@@ -1017,38 +1064,47 @@ describe("getUnratedPastBooking - Feedback Loop Prevention", () => {
                 userId,
                 meetupId: "meetup-1",
                 status: "confirmed",
-                meetup: {
-                    id: "meetup-1",
-                    date: pastDateStr1,
-                    status: "open",
-                    location: null,
-                },
+                createdAt: new Date(pastDate1),
             },
             {
                 id: "booking-2",
                 userId,
                 meetupId: "meetup-2",
                 status: "confirmed",
-                meetup: {
-                    id: "meetup-2",
-                    date: pastDateStr2,
-                    status: "open",
-                    location: null,
-                },
+                createdAt: new Date(pastDate2),
             },
         ];
 
-        mockQuery.findMany.mockResolvedValueOnce(allBookings);
-        // First booking has no feedback
-        mockLimit.mockResolvedValueOnce([]);
-        // Second booking also has no feedback (but we should return the first one)
-        // Note: We only check the first booking since getUnratedPastBooking returns on first match
+        const allMeetups = [
+            {
+                id: "meetup-1",
+                date: pastDateStr1,
+                status: "open",
+                locationId: null,
+            },
+            {
+                id: "meetup-2",
+                date: pastDateStr2,
+                status: "open",
+                locationId: null,
+            },
+        ];
+
+        const allLocations: any[] = [];
+
+        // Mock getPastBookings (3 parallel queries)
+        mockWhere.mockResolvedValueOnce(allBookings);
+        mockFromMeetups.mockResolvedValueOnce(allMeetups);
+        mockFromLocations.mockResolvedValueOnce(allLocations);
+        // Mock getUnratedPastBooking's feedback query (4th call to mockWhere) - no feedback exists
+        mockWhere.mockResolvedValueOnce([]);
 
         const { getUnratedPastBooking } = await import("../data");
         const result = await getUnratedPastBooking(userId);
 
-        // Should return the first unrated past event
-        expect(result).toBe("booking-1");
+        // Should return the first unrated past event (most recent first, so booking-2 comes before booking-1)
+        // getPastBookings sorts by createdAt descending, so booking-2 (7 days ago) comes before booking-1 (14 days ago)
+        expect(result).toBe("booking-2");
     });
 
     it("should return second event if first already has feedback", async () => {
@@ -1067,34 +1123,43 @@ describe("getUnratedPastBooking - Feedback Loop Prevention", () => {
                 userId,
                 meetupId: "meetup-1",
                 status: "confirmed",
-                meetup: {
-                    id: "meetup-1",
-                    date: pastDateStr1,
-                    status: "open",
-                    location: null,
-                },
+                createdAt: new Date(pastDate1),
             },
             {
                 id: "booking-2",
                 userId,
                 meetupId: "meetup-2",
                 status: "confirmed",
-                meetup: {
-                    id: "meetup-2",
-                    date: pastDateStr2,
-                    status: "open",
-                    location: null,
-                },
+                createdAt: new Date(pastDate2),
             },
         ];
 
-        mockQuery.findMany.mockResolvedValueOnce(allBookings);
-        // First booking already has feedback
-        mockLimit.mockResolvedValueOnce([
+        const allMeetups = [
+            {
+                id: "meetup-1",
+                date: pastDateStr1,
+                status: "open",
+                locationId: null,
+            },
+            {
+                id: "meetup-2",
+                date: pastDateStr2,
+                status: "open",
+                locationId: null,
+            },
+        ];
+
+        const allLocations: any[] = [];
+
+        // Mock getPastBookings (3 parallel queries)
+        mockWhere.mockResolvedValueOnce(allBookings);
+        mockFromMeetups.mockResolvedValueOnce(allMeetups);
+        mockFromLocations.mockResolvedValueOnce(allLocations);
+        // Mock getUnratedPastBooking's batched feedback query (4th call to mockWhere)
+        // First booking already has feedback, second doesn't
+        mockWhere.mockResolvedValueOnce([
             { id: "feedback-1", bookingId: "booking-1", rating: 5 },
         ]);
-        // Second booking has no feedback
-        mockLimit.mockResolvedValueOnce([]);
 
         const { getUnratedPastBooking } = await import("../data");
         const result = await getUnratedPastBooking(userId);
