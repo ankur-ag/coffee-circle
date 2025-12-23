@@ -631,21 +631,41 @@ describe("isMeetupInFuture - Edge Cases", () => {
 });
 
 describe("getPastBookings - Feedback Scenarios", () => {
-    let mockQuery: any;
+    let mockSelect: any;
+    let mockFromBookings: any;
+    let mockFromMeetups: any;
+    let mockFromLocations: any;
+    let mockWhere: any;
     let mockDb: any;
 
     beforeEach(() => {
         vi.clearAllMocks();
         
-        // Mock db.query.bookings.findMany
-        mockQuery = {
-            findMany: vi.fn(),
-        };
+        // Mock db.select().from().where() chain (Edge Runtime compatible)
+        // getPastBookings makes 3 parallel queries:
+        // 1. db.select().from(bookings).where(...) -> needs where()
+        // 2. db.select().from(meetups) -> returns promise directly
+        // 3. db.select().from(coffeeShops) -> returns promise directly
+        mockWhere = vi.fn();
+        
+        // Create separate mocks for each table
+        mockFromBookings = vi.fn().mockReturnValue({ where: mockWhere });
+        mockFromMeetups = vi.fn();
+        mockFromLocations = vi.fn();
+        
+        // mockFrom will return different mocks based on the table
+        let callCount = 0;
+        const mockFrom = vi.fn().mockImplementation(() => {
+            callCount++;
+            if (callCount === 1) return mockFromBookings(); // bookings
+            if (callCount === 2) return mockFromMeetups(); // meetups
+            return mockFromLocations(); // locations
+        });
+        
+        mockSelect = vi.fn().mockReturnValue({ from: mockFrom });
         
         mockDb = {
-            query: {
-                bookings: mockQuery,
-            },
+            select: mockSelect,
         };
         
         (getDb as any).mockReturnValue(mockDb);
@@ -664,16 +684,26 @@ describe("getPastBookings - Feedback Scenarios", () => {
                 userId,
                 meetupId: "meetup-456",
                 status: "confirmed",
-                meetup: {
-                    id: "meetup-456",
-                    date: futureDateStr,
-                    status: "cancelled", // Event is cancelled but date is in future
-                    location: null,
-                },
+                createdAt: new Date(),
             },
         ];
 
-        mockQuery.findMany.mockResolvedValueOnce(allBookings);
+        const allMeetups = [
+            {
+                id: "meetup-456",
+                date: futureDateStr,
+                status: "cancelled", // Event is cancelled but date is in future
+                locationId: null,
+            },
+        ];
+
+        const allLocations: any[] = [];
+
+        // Mock Promise.all([bookings, meetups, locations])
+        // getPastBookings calls db.select() 3 times in parallel
+        mockWhere.mockResolvedValueOnce(allBookings); // bookings query
+        mockFromMeetups.mockResolvedValueOnce(allMeetups); // meetups query
+        mockFromLocations.mockResolvedValueOnce(allLocations); // locations query
 
         const { getPastBookings } = await import("../data");
         const pastBookings = await getPastBookings(userId);
@@ -695,16 +725,24 @@ describe("getPastBookings - Feedback Scenarios", () => {
                 userId,
                 meetupId: "meetup-456",
                 status: "confirmed",
-                meetup: {
-                    id: "meetup-456",
-                    date: pastDateStr,
-                    status: "cancelled", // Event is cancelled AND date is in past
-                    location: null,
-                },
+                createdAt: new Date(),
             },
         ];
 
-        mockQuery.findMany.mockResolvedValueOnce(allBookings);
+        const allMeetups = [
+            {
+                id: "meetup-456",
+                date: pastDateStr,
+                status: "cancelled", // Event is cancelled AND date is in past
+                locationId: null,
+            },
+        ];
+
+        const allLocations: any[] = [];
+
+        mockWhere.mockResolvedValueOnce(allBookings);
+        mockFromMeetups.mockResolvedValueOnce(allMeetups);
+        mockFromLocations.mockResolvedValueOnce(allLocations);
 
         const { getPastBookings } = await import("../data");
         const pastBookings = await getPastBookings(userId);
@@ -726,16 +764,24 @@ describe("getPastBookings - Feedback Scenarios", () => {
                 userId,
                 meetupId: "meetup-456",
                 status: "confirmed",
-                meetup: {
-                    id: "meetup-456",
-                    date: pastDateStr,
-                    status: "past", // Explicitly marked as past
-                    location: null,
-                },
+                createdAt: new Date(),
             },
         ];
 
-        mockQuery.findMany.mockResolvedValueOnce(allBookings);
+        const allMeetups = [
+            {
+                id: "meetup-456",
+                date: pastDateStr,
+                status: "past", // Explicitly marked as past
+                locationId: null,
+            },
+        ];
+
+        const allLocations: any[] = [];
+
+        mockWhere.mockResolvedValueOnce(allBookings);
+        mockFromMeetups.mockResolvedValueOnce(allMeetups);
+        mockFromLocations.mockResolvedValueOnce(allLocations);
 
         const { getPastBookings } = await import("../data");
         const pastBookings = await getPastBookings(userId);
@@ -756,16 +802,24 @@ describe("getPastBookings - Feedback Scenarios", () => {
                 userId,
                 meetupId: "meetup-456",
                 status: "confirmed",
-                meetup: {
-                    id: "meetup-456",
-                    date: futureDateStr,
-                    status: "open", // Event is open but date is in future
-                    location: null,
-                },
+                createdAt: new Date(),
             },
         ];
 
-        mockQuery.findMany.mockResolvedValueOnce(allBookings);
+        const allMeetups = [
+            {
+                id: "meetup-456",
+                date: futureDateStr,
+                status: "open", // Event is open but date is in future
+                locationId: null,
+            },
+        ];
+
+        const allLocations: any[] = [];
+
+        mockWhere.mockResolvedValueOnce(allBookings);
+        mockFromMeetups.mockResolvedValueOnce(allMeetups);
+        mockFromLocations.mockResolvedValueOnce(allLocations);
 
         const { getPastBookings } = await import("../data");
         const pastBookings = await getPastBookings(userId);
