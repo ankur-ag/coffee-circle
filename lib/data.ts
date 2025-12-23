@@ -20,19 +20,23 @@ export function isMeetupInFuture(meetup: any): boolean {
 }
 
 /**
- * Check if a booking is active (not past)
- * A booking is active if the meetup date is today or in the future
+ * Check if a booking is active (not past and not for a cancelled event)
+ * A booking is active if:
+ * - The booking status is "confirmed"
+ * - The meetup date is today or in the future
+ * - The meetup is not cancelled
  */
 export function isBookingActive(booking: any): boolean {
     if (!booking?.meetup?.date) return false;
     if (booking.status !== "confirmed") return false;
+    if (booking.meetup?.status === "cancelled") return false;
     
     return isMeetupInFuture(booking.meetup);
 }
 
 /**
  * Check if user has an active booking (Edge Runtime compatible)
- * Returns true if user has any confirmed booking for a future meetup
+ * Returns true if user has any confirmed booking for a future meetup that is not cancelled
  */
 export async function hasActiveBooking(userId: string): Promise<boolean> {
     const db = getDb();
@@ -50,7 +54,7 @@ export async function hasActiveBooking(userId: string): Promise<boolean> {
         return false;
     }
     
-    // Get meetups for these bookings to check if they're in the future
+    // Get meetups for these bookings to check if they're in the future and not cancelled
     const meetupIds = confirmedBookings.map((b: any) => b.meetupId);
     
     if (meetupIds.length === 0) {
@@ -62,10 +66,14 @@ export async function hasActiveBooking(userId: string): Promise<boolean> {
         .from(meetups)
         .where(inArray(meetups.id, meetupIds)) as any[];
     
-    // Check if any booking is for a future meetup
+    // Check if any booking is for a future meetup that is not cancelled
     for (const booking of confirmedBookings) {
         const meetup = meetupsResult.find((m: any) => m.id === booking.meetupId);
-        if (meetup && isMeetupInFuture(meetup)) {
+        // A booking is only active if:
+        // 1. The meetup exists
+        // 2. The meetup is in the future (by date)
+        // 3. The meetup is not cancelled
+        if (meetup && isMeetupInFuture(meetup) && meetup.status !== "cancelled") {
             return true;
         }
     }

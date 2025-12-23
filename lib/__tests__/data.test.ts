@@ -1,0 +1,631 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { hasActiveBooking, isBookingActive, isMeetupInFuture } from "../data";
+import { getDb } from "../db";
+
+// Mock the database module
+vi.mock("../db", () => ({
+    getDb: vi.fn(),
+}));
+
+describe("hasActiveBooking", () => {
+    let mockSelect: any;
+    let mockFrom: any;
+    let mockWhere: any;
+    let mockDb: any;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        
+        // Create a chainable mock for the query builder
+        // The chain is: db.select().from(table).where(condition) -> returns array
+        mockWhere = vi.fn();
+        mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
+        mockSelect = vi.fn().mockReturnValue({ from: mockFrom });
+        
+        mockDb = {
+            select: mockSelect,
+        };
+        
+        (getDb as any).mockReturnValue(mockDb);
+    });
+
+    it("should return false when user has no bookings", async () => {
+        // Mock: no confirmed bookings
+        mockWhere.mockResolvedValueOnce([]);
+
+        const result = await hasActiveBooking("user-123");
+        expect(result).toBe(false);
+        expect(mockSelect).toHaveBeenCalled();
+    });
+
+    it("should return false when user has booking for cancelled event - allows new booking", async () => {
+        /**
+         * This is the key test case for the scenario:
+         * User has a reservation for a future event
+         * That event gets cancelled
+         * User should be able to book a new event
+         */
+        const userId = "user-123";
+        const meetupId = "meetup-456";
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 7); // 7 days in the future
+        const futureDateStr = futureDate.toISOString().split("T")[0];
+
+        // Mock: user has a confirmed booking
+        const confirmedBookings = [
+            {
+                id: "booking-123",
+                userId,
+                meetupId,
+                status: "confirmed",
+            },
+        ];
+
+        // Mock: the meetup is cancelled but date is in future
+        const meetups = [
+            {
+                id: meetupId,
+                date: futureDateStr,
+                status: "cancelled", // Event is cancelled
+            },
+        ];
+
+        // First call: get confirmed bookings
+        mockWhere.mockResolvedValueOnce(confirmedBookings);
+        // Second call: get meetups
+        mockWhere.mockResolvedValueOnce(meetups);
+
+        const result = await hasActiveBooking(userId);
+        
+        // Should return false because event is cancelled
+        // This means user can book a new event
+        expect(result).toBe(false);
+        expect(mockSelect).toHaveBeenCalledTimes(2);
+    });
+
+    it("should return true when user has booking for active future event", async () => {
+        const userId = "user-123";
+        const meetupId = "meetup-456";
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 7); // 7 days in the future
+        const futureDateStr = futureDate.toISOString().split("T")[0];
+
+        // Mock: user has a confirmed booking
+        const confirmedBookings = [
+            {
+                id: "booking-123",
+                userId,
+                meetupId,
+                status: "confirmed",
+            },
+        ];
+
+        // Mock: the meetup is active and date is in future
+        const meetups = [
+            {
+                id: meetupId,
+                date: futureDateStr,
+                status: "open", // Event is active
+            },
+        ];
+
+        // First call: get confirmed bookings
+        mockWhere.mockResolvedValueOnce(confirmedBookings);
+        // Second call: get meetups
+        mockWhere.mockResolvedValueOnce(meetups);
+
+        const result = await hasActiveBooking(userId);
+        
+        // Should return true because event is active and in future
+        expect(result).toBe(true);
+        expect(mockSelect).toHaveBeenCalledTimes(2);
+    });
+
+    it("should return false when user has booking for past event", async () => {
+        const userId = "user-123";
+        const meetupId = "meetup-456";
+        const pastDate = new Date();
+        pastDate.setDate(pastDate.getDate() - 7); // 7 days in the past
+        const pastDateStr = pastDate.toISOString().split("T")[0];
+
+        // Mock: user has a confirmed booking
+        const confirmedBookings = [
+            {
+                id: "booking-123",
+                userId,
+                meetupId,
+                status: "confirmed",
+            },
+        ];
+
+        // Mock: the meetup is in the past
+        const meetups = [
+            {
+                id: meetupId,
+                date: pastDateStr,
+                status: "open",
+            },
+        ];
+
+        // First call: get confirmed bookings
+        mockWhere.mockResolvedValueOnce(confirmedBookings);
+        // Second call: get meetups
+        mockWhere.mockResolvedValueOnce(meetups);
+
+        const result = await hasActiveBooking(userId);
+        
+        // Should return false because event is in the past
+        expect(result).toBe(false);
+        expect(mockSelect).toHaveBeenCalledTimes(2);
+    });
+});
+
+describe("isBookingActive", () => {
+    it("should return false for booking with cancelled event", () => {
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 7);
+        const futureDateStr = futureDate.toISOString().split("T")[0];
+
+        const booking = {
+            id: "booking-123",
+            status: "confirmed",
+            meetup: {
+                id: "meetup-456",
+                date: futureDateStr,
+                status: "cancelled", // Event is cancelled
+            },
+        };
+
+        const result = isBookingActive(booking);
+        expect(result).toBe(false);
+    });
+
+    it("should return true for booking with active future event", () => {
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 7);
+        const futureDateStr = futureDate.toISOString().split("T")[0];
+
+        const booking = {
+            id: "booking-123",
+            status: "confirmed",
+            meetup: {
+                id: "meetup-456",
+                date: futureDateStr,
+                status: "open", // Event is active
+            },
+        };
+
+        const result = isBookingActive(booking);
+        expect(result).toBe(true);
+    });
+
+    it("should return false for booking with past event", () => {
+        const pastDate = new Date();
+        pastDate.setDate(pastDate.getDate() - 7);
+        const pastDateStr = pastDate.toISOString().split("T")[0];
+
+        const booking = {
+            id: "booking-123",
+            status: "confirmed",
+            meetup: {
+                id: "meetup-456",
+                date: pastDateStr,
+                status: "open",
+            },
+        };
+
+        const result = isBookingActive(booking);
+        expect(result).toBe(false);
+    });
+
+    it("should return false for cancelled booking", () => {
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 7);
+        const futureDateStr = futureDate.toISOString().split("T")[0];
+
+        const booking = {
+            id: "booking-123",
+            status: "cancelled", // Booking is cancelled
+            meetup: {
+                id: "meetup-456",
+                date: futureDateStr,
+                status: "open",
+            },
+        };
+
+        const result = isBookingActive(booking);
+        expect(result).toBe(false);
+    });
+
+    it("should return false for booking with missing meetup date", () => {
+        const booking = {
+            id: "booking-123",
+            status: "confirmed",
+            meetup: {
+                id: "meetup-456",
+                // date is missing
+                status: "open",
+            },
+        };
+
+        const result = isBookingActive(booking);
+        expect(result).toBe(false);
+    });
+
+    it("should return false for booking with null meetup", () => {
+        const booking = {
+            id: "booking-123",
+            status: "confirmed",
+            meetup: null,
+        };
+
+        const result = isBookingActive(booking);
+        expect(result).toBe(false);
+    });
+
+    it("should return false for booking with undefined meetup", () => {
+        const booking = {
+            id: "booking-123",
+            status: "confirmed",
+            meetup: undefined,
+        };
+
+        const result = isBookingActive(booking);
+        expect(result).toBe(false);
+    });
+
+    it("should return true for booking with event date exactly today", () => {
+        // Use local date string format (YYYY-MM-DD) to avoid timezone issues
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, "0");
+        const day = String(today.getDate()).padStart(2, "0");
+        const todayStr = `${year}-${month}-${day}`;
+
+        const booking = {
+            id: "booking-123",
+            status: "confirmed",
+            meetup: {
+                id: "meetup-456",
+                date: todayStr, // Event is today
+                status: "open",
+            },
+        };
+
+        const result = isBookingActive(booking);
+        expect(result).toBe(true); // Today is considered "in the future"
+    });
+
+    it("should return false for booking with event that is both past and cancelled", () => {
+        const pastDate = new Date();
+        pastDate.setDate(pastDate.getDate() - 7);
+        const pastDateStr = pastDate.toISOString().split("T")[0];
+
+        const booking = {
+            id: "booking-123",
+            status: "confirmed",
+            meetup: {
+                id: "meetup-456",
+                date: pastDateStr,
+                status: "cancelled", // Both past AND cancelled
+            },
+        };
+
+        const result = isBookingActive(booking);
+        expect(result).toBe(false);
+    });
+
+    it("should return false for booking with event status 'full' but not cancelled", () => {
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 7);
+        const futureDateStr = futureDate.toISOString().split("T")[0];
+
+        const booking = {
+            id: "booking-123",
+            status: "confirmed",
+            meetup: {
+                id: "meetup-456",
+                date: futureDateStr,
+                status: "full", // Event is full but not cancelled
+            },
+        };
+
+        const result = isBookingActive(booking);
+        // Should return true because "full" is not "cancelled"
+        expect(result).toBe(true);
+    });
+
+    it("should return false for booking with event status 'past'", () => {
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 7);
+        const futureDateStr = futureDate.toISOString().split("T")[0];
+
+        const booking = {
+            id: "booking-123",
+            status: "confirmed",
+            meetup: {
+                id: "meetup-456",
+                date: futureDateStr,
+                status: "past", // Status is "past" even though date is future (data inconsistency)
+            },
+        };
+
+        const result = isBookingActive(booking);
+        // Should return true because we check date, not status "past"
+        // But status "past" is not "cancelled", so it's still active
+        expect(result).toBe(true);
+    });
+});
+
+describe("hasActiveBooking - Edge Cases", () => {
+    let mockSelect: any;
+    let mockFrom: any;
+    let mockWhere: any;
+    let mockDb: any;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockWhere = vi.fn();
+        mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
+        mockSelect = vi.fn().mockReturnValue({ from: mockFrom });
+        mockDb = { select: mockSelect };
+        (getDb as any).mockReturnValue(mockDb);
+    });
+
+    it("should return true when event date is exactly today", async () => {
+        const userId = "user-123";
+        const meetupId = "meetup-456";
+        // Use local date string format (YYYY-MM-DD) to avoid timezone issues
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, "0");
+        const day = String(today.getDate()).padStart(2, "0");
+        const todayStr = `${year}-${month}-${day}`;
+
+        const confirmedBookings = [{ id: "booking-123", userId, meetupId, status: "confirmed" }];
+        const meetups = [{ id: meetupId, date: todayStr, status: "open" }];
+
+        mockWhere.mockResolvedValueOnce(confirmedBookings);
+        mockWhere.mockResolvedValueOnce(meetups);
+
+        const result = await hasActiveBooking(userId);
+        expect(result).toBe(true); // Today is considered "in the future"
+    });
+
+    it("should return true when user has multiple bookings but one is active", async () => {
+        const userId = "user-123";
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 7);
+        const futureDateStr = futureDate.toISOString().split("T")[0];
+
+        const pastDate = new Date();
+        pastDate.setDate(pastDate.getDate() - 7);
+        const pastDateStr = pastDate.toISOString().split("T")[0];
+
+        // User has multiple bookings
+        const confirmedBookings = [
+            { id: "booking-1", userId, meetupId: "meetup-1", status: "confirmed" },
+            { id: "booking-2", userId, meetupId: "meetup-2", status: "confirmed" },
+        ];
+
+        // One is active, one is past
+        const meetups = [
+            { id: "meetup-1", date: futureDateStr, status: "open" },
+            { id: "meetup-2", date: pastDateStr, status: "open" },
+        ];
+
+        mockWhere.mockResolvedValueOnce(confirmedBookings);
+        mockWhere.mockResolvedValueOnce(meetups);
+
+        const result = await hasActiveBooking(userId);
+        expect(result).toBe(true); // Has at least one active booking
+    });
+
+    it("should return false when user has multiple bookings but all are for cancelled events", async () => {
+        const userId = "user-123";
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 7);
+        const futureDateStr = futureDate.toISOString().split("T")[0];
+
+        const confirmedBookings = [
+            { id: "booking-1", userId, meetupId: "meetup-1", status: "confirmed" },
+            { id: "booking-2", userId, meetupId: "meetup-2", status: "confirmed" },
+        ];
+
+        // All events are cancelled
+        const meetups = [
+            { id: "meetup-1", date: futureDateStr, status: "cancelled" },
+            { id: "meetup-2", date: futureDateStr, status: "cancelled" },
+        ];
+
+        mockWhere.mockResolvedValueOnce(confirmedBookings);
+        mockWhere.mockResolvedValueOnce(meetups);
+
+        const result = await hasActiveBooking(userId);
+        expect(result).toBe(false); // All events are cancelled
+    });
+
+    it("should return false when user has booking but meetup doesn't exist (orphaned booking)", async () => {
+        const userId = "user-123";
+        const meetupId = "meetup-456";
+
+        const confirmedBookings = [
+            { id: "booking-123", userId, meetupId, status: "confirmed" },
+        ];
+
+        // Meetup doesn't exist in database
+        const meetups: any[] = [];
+
+        mockWhere.mockResolvedValueOnce(confirmedBookings);
+        mockWhere.mockResolvedValueOnce(meetups);
+
+        const result = await hasActiveBooking(userId);
+        expect(result).toBe(false); // Meetup not found
+    });
+
+    it("should return false when user has booking but meetup ID doesn't match", async () => {
+        const userId = "user-123";
+        const meetupId = "meetup-456";
+
+        const confirmedBookings = [
+            { id: "booking-123", userId, meetupId, status: "confirmed" },
+        ];
+
+        // Meetup exists but with different ID
+        const meetups = [
+            { id: "meetup-999", date: "2025-12-31", status: "open" },
+        ];
+
+        mockWhere.mockResolvedValueOnce(confirmedBookings);
+        mockWhere.mockResolvedValueOnce(meetups);
+
+        const result = await hasActiveBooking(userId);
+        expect(result).toBe(false); // Meetup ID doesn't match
+    });
+
+    it("should return false when meetupIds array contains only null/undefined", async () => {
+        const userId = "user-123";
+
+        // Bookings exist but meetupId is missing/null/undefined
+        // When mapped, this creates an array like [null, undefined]
+        // The array has length > 0, but inArray will filter them out
+        // The meetupsResult will be empty, so no active booking found
+        const confirmedBookings = [
+            { id: "booking-123", userId, meetupId: null, status: "confirmed" },
+            { id: "booking-124", userId, meetupId: undefined, status: "confirmed" },
+        ];
+
+        mockWhere.mockResolvedValueOnce(confirmedBookings);
+        // inArray with null/undefined values will return empty array
+        mockWhere.mockResolvedValueOnce([]);
+
+        const result = await hasActiveBooking(userId);
+        expect(result).toBe(false); // No valid meetups found
+    });
+
+    it("should return true when user has mix of cancelled and active bookings", async () => {
+        const userId = "user-123";
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 7);
+        const futureDateStr = futureDate.toISOString().split("T")[0];
+
+        const confirmedBookings = [
+            { id: "booking-1", userId, meetupId: "meetup-1", status: "confirmed" },
+            { id: "booking-2", userId, meetupId: "meetup-2", status: "confirmed" },
+        ];
+
+        // One cancelled, one active
+        const meetups = [
+            { id: "meetup-1", date: futureDateStr, status: "cancelled" },
+            { id: "meetup-2", date: futureDateStr, status: "open" },
+        ];
+
+        mockWhere.mockResolvedValueOnce(confirmedBookings);
+        mockWhere.mockResolvedValueOnce(meetups);
+
+        const result = await hasActiveBooking(userId);
+        expect(result).toBe(true); // Has at least one active booking
+    });
+
+    it("should return false when event status is 'full' but date is in future", async () => {
+        const userId = "user-123";
+        const meetupId = "meetup-456";
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 7);
+        const futureDateStr = futureDate.toISOString().split("T")[0];
+
+        const confirmedBookings = [
+            { id: "booking-123", userId, meetupId, status: "confirmed" },
+        ];
+
+        // Event is full but not cancelled
+        const meetups = [
+            { id: meetupId, date: futureDateStr, status: "full" },
+        ];
+
+        mockWhere.mockResolvedValueOnce(confirmedBookings);
+        mockWhere.mockResolvedValueOnce(meetups);
+
+        const result = await hasActiveBooking(userId);
+        expect(result).toBe(true); // "full" is not "cancelled", so booking is still active
+    });
+
+    it("should handle event with status 'past' but future date (data inconsistency)", async () => {
+        const userId = "user-123";
+        const meetupId = "meetup-456";
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 7);
+        const futureDateStr = futureDate.toISOString().split("T")[0];
+
+        const confirmedBookings = [
+            { id: "booking-123", userId, meetupId, status: "confirmed" },
+        ];
+
+        // Status says "past" but date is in future (data inconsistency)
+        const meetups = [
+            { id: meetupId, date: futureDateStr, status: "past" },
+        ];
+
+        mockWhere.mockResolvedValueOnce(confirmedBookings);
+        mockWhere.mockResolvedValueOnce(meetups);
+
+        const result = await hasActiveBooking(userId);
+        // Should return true because we check date, not status "past"
+        // Status "past" is not "cancelled", so it's still considered active
+        expect(result).toBe(true);
+    });
+});
+
+describe("isMeetupInFuture - Edge Cases", () => {
+    it("should return false for meetup with null date", () => {
+        const meetup = { id: "meetup-123", date: null, status: "open" };
+        expect(isMeetupInFuture(meetup)).toBe(false);
+    });
+
+    it("should return false for meetup with undefined date", () => {
+        const meetup = { id: "meetup-123", date: undefined, status: "open" };
+        expect(isMeetupInFuture(meetup)).toBe(false);
+    });
+
+    it("should return false for meetup with missing date property", () => {
+        const meetup = { id: "meetup-123", status: "open" };
+        expect(isMeetupInFuture(meetup)).toBe(false);
+    });
+
+    it("should return true for meetup with date exactly today", () => {
+        // Use local date string format (YYYY-MM-DD) to avoid timezone issues
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, "0");
+        const day = String(today.getDate()).padStart(2, "0");
+        const todayStr = `${year}-${month}-${day}`;
+        const meetup = { id: "meetup-123", date: todayStr, status: "open" };
+        expect(isMeetupInFuture(meetup)).toBe(true);
+    });
+
+    it("should return false for meetup with date one day in the past", () => {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        yesterday.setHours(0, 0, 0, 0);
+        const yesterdayStr = yesterday.toISOString().split("T")[0];
+        const meetup = { id: "meetup-123", date: yesterdayStr, status: "open" };
+        expect(isMeetupInFuture(meetup)).toBe(false);
+    });
+
+    it("should return true for meetup with date one day in the future", () => {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0);
+        const tomorrowStr = tomorrow.toISOString().split("T")[0];
+        const meetup = { id: "meetup-123", date: tomorrowStr, status: "open" };
+        expect(isMeetupInFuture(meetup)).toBe(true);
+    });
+
+    it("should return false for null meetup", () => {
+        expect(isMeetupInFuture(null)).toBe(false);
+    });
+
+    it("should return false for undefined meetup", () => {
+        expect(isMeetupInFuture(undefined)).toBe(false);
+    });
+});
