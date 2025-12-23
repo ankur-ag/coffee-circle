@@ -12,6 +12,7 @@
     "init-dev-db": "tsx scripts/init-dev-db.ts",
     "migrate:google-maps": "tsx scripts/run-migration-007.ts",
     "migrate:capacity": "tsx scripts/run-migration-008.ts",
+    "migrate:capacity:production": "tsx scripts/run-migration-008-production.ts",
     "check-db": "tsx scripts/check-db-config.ts",
     "set-admin": "tsx scripts/set-admin.ts",
     "seed": "tsx scripts/seed.ts",
