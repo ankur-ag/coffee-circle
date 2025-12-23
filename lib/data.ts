@@ -84,35 +84,72 @@ export async function hasActiveBooking(userId: string): Promise<boolean> {
 export async function getUserBooking(userId: string) {
     const db = getDb();
 
-    // Get all bookings for the user, ordered by creation date
-    const allBookings = await db.query.bookings.findMany({
-        where: eq(bookings.userId, userId),
-        orderBy: [desc(bookings.createdAt)],
-        with: {
-            meetup: {
-                with: {
-                    location: true,
-                }
-            }
+    // ULTRA-OPTIMIZATION: Fetch ALL data in a single parallel batch
+    // With <20 records, fetching everything is faster than multiple filtered queries
+    // This reduces from 3 query batches to 1 single batch (4 queries in parallel)
+    const [confirmedBookings, allMeetups, allUsers, allLocations] = await Promise.all([
+        // Get all confirmed bookings for the user
+        db
+            .select()
+            .from(bookings)
+            .where(and(
+                eq(bookings.userId, userId),
+                eq(bookings.status, "confirmed")
+            )),
+        // Pre-fetch ALL meetups (with only 20 records, this is faster than filtering)
+        db
+            .select()
+            .from(meetups),
+        // Pre-fetch ALL users (with <20 records, this is faster than filtering by IDs)
+        db
+            .select()
+            .from(users),
+        // Pre-fetch ALL locations (with <20 records, this is faster than individual queries)
+        db
+            .select()
+            .from(coffeeShops),
+    ]) as [any[], any[], any[], any[]];
+
+    if (confirmedBookings.length === 0) {
+        return null;
+    }
+
+    // Find the first active (upcoming) booking using pre-fetched meetups
+    let activeBooking: any = null;
+    let activeMeetup: any = null;
+
+    for (const booking of confirmedBookings) {
+        const meetup = allMeetups.find((m: any) => m.id === booking.meetupId);
+        if (meetup && isBookingActive({ ...booking, meetup })) {
+            activeBooking = booking;
+            activeMeetup = meetup;
+            break;
         }
-    }) as any[];
+    }
 
-    // Find the first active (upcoming) booking
-    const activeBooking = allBookings.find((booking: any) => isBookingActive(booking));
+    if (!activeBooking || !activeMeetup) return null;
 
-    if (!activeBooking) return null;
+    // Get location from pre-fetched locations (in-memory, no DB query)
+    const location = activeMeetup.locationId
+        ? allLocations.find((l: any) => l.id === activeMeetup.locationId) || null
+        : null;
 
-    // Get attendees for this meetup
-    const attendees = await db.query.bookings.findMany({
-        where: eq(bookings.meetupId, activeBooking.meetupId),
-        with: {
-            user: true
-        }
-    }) as any[];
+    // Get attendee bookings from pre-fetched bookings (in-memory, no DB query)
+    const attendeeBookings = confirmedBookings.filter(
+        (b: any) => b.meetupId === activeBooking.meetupId
+    );
+
+    // Filter attendees from pre-fetched users (in-memory, no DB query)
+    const attendeeUserIds = new Set(attendeeBookings.map((b: any) => b.userId));
+    const attendees = allUsers.filter((u: any) => attendeeUserIds.has(u.id));
 
     return {
         ...activeBooking,
-        attendees: attendees.map((b: any) => b.user),
+        meetup: {
+            ...activeMeetup,
+            location,
+        },
+        attendees,
     };
 }
 
@@ -223,22 +260,44 @@ export async function isMeetupFull(meetupId: string, includePlusOne: boolean = f
 export async function getPastBookings(userId: string) {
     const db = getDb();
 
-    // Get all bookings for the user
-    const allBookings = await db.query.bookings.findMany({
-        where: eq(bookings.userId, userId),
-        orderBy: [desc(bookings.createdAt)],
-        with: {
-            meetup: {
-                with: {
-                    location: true,
-                }
-            }
-        }
-    }) as any[];
+    // OPTIMIZATION: Fetch all data in parallel (similar to getUserBooking)
+    // With <20 records, fetching everything is faster than multiple filtered queries
+    const [allBookings, allMeetups, allLocations] = await Promise.all([
+        // Get all bookings for the user
+        db
+            .select()
+            .from(bookings)
+            .where(eq(bookings.userId, userId)),
+        // Pre-fetch ALL meetups (with only 20 records, this is faster than filtering)
+        db
+            .select()
+            .from(meetups),
+        // Pre-fetch ALL locations (with <20 records, this is faster than individual queries)
+        db
+            .select()
+            .from(coffeeShops),
+    ]) as [any[], any[], any[]];
+
+    if (allBookings.length === 0) {
+        return [];
+    }
+
+    // Combine bookings with meetups and locations (all in-memory, no DB queries)
+    const bookingsWithDetails = allBookings.map((booking: any) => {
+        const meetup = allMeetups.find((m: any) => m.id === booking.meetupId);
+        const location = meetup?.locationId 
+            ? allLocations.find((l: any) => l.id === meetup.locationId)
+            : null;
+        
+        return {
+            ...booking,
+            meetup: meetup ? { ...meetup, location } : null,
+        };
+    });
 
     // Filter for past bookings - only bookings where the event date is actually in the past
     // This ensures we don't ask for feedback on future events, even if they're cancelled
-    const pastBookings = allBookings.filter((booking: any) => {
+    const pastBookings = bookingsWithDetails.filter((booking: any) => {
         if (!booking.meetup || !booking.meetup.date) return false;
         
         // Check if meetup status is "past"
@@ -250,7 +309,12 @@ export async function getPastBookings(userId: string) {
         return !isMeetupInFuture(booking.meetup);
     });
 
-    return pastBookings;
+    // Sort by creation date descending (most recent first)
+    return pastBookings.sort((a: any, b: any) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+    });
 }
 
 export async function getFeedbackForBooking(bookingId: string) {
@@ -295,6 +359,7 @@ export async function getBookingById(bookingId: string, userId: string) {
  * Find the first past booking that doesn't have feedback yet
  * Returns the booking ID if found, null otherwise
  * Only returns bookings where the event date is actually in the past
+ * Optimized to batch feedback checks instead of sequential queries
  */
 export async function getUnratedPastBooking(userId: string): Promise<string | null> {
     const db = getDb();
@@ -306,7 +371,16 @@ export async function getUnratedPastBooking(userId: string): Promise<string | nu
         return null;
     }
     
-    // Check each past booking for feedback
+    // Batch check feedback for all past bookings at once (Edge Runtime compatible)
+    const bookingIds = pastBookings.map((b: any) => b.id);
+    const existingFeedback = await db
+        .select()
+        .from(feedback)
+        .where(inArray(feedback.bookingId, bookingIds)) as any[];
+    
+    const feedbackBookingIds = new Set(existingFeedback.map((f: any) => f.bookingId));
+    
+    // Find the first past booking without feedback
     // Double-check that the event date is actually in the past before asking for feedback
     for (const booking of pastBookings) {
         // Ensure the event date is actually in the past (not just cancelled future event)
@@ -315,8 +389,8 @@ export async function getUnratedPastBooking(userId: string): Promise<string | nu
         // Skip if event is in the future (shouldn't happen with getPastBookings, but double-check)
         if (isMeetupInFuture(booking.meetup)) continue;
         
-        const existingFeedback = await getFeedbackForBooking(booking.id);
-        if (!existingFeedback) {
+        // Check if feedback exists (from batched query)
+        if (!feedbackBookingIds.has(booking.id)) {
             // Found an unrated past booking with a past event date
             return booking.id;
         }

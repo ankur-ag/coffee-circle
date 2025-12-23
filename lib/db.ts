@@ -2,6 +2,11 @@ import { createPool } from "@vercel/postgres";
 import { drizzle } from "drizzle-orm/vercel-postgres";
 import * as schema from "./schema";
 
+// Cache the database connection to avoid creating new pools on every call
+// This significantly improves performance by reusing connections
+let cachedDb: ReturnType<typeof drizzle> | null = null;
+let cachedConnectionString: string | null = null;
+
 /**
  * Get database connection
  * 
@@ -19,6 +24,7 @@ import * as schema from "./schema";
  * - Production: Uses POSTGRES_URL from Vercel environment variables
  * 
  * This works for both Edge Runtime and Server Actions.
+ * Connection is cached to improve performance.
  */
 export function getDb() {
     // For local development, prefer POSTGRES_URL_DEV to ensure separate databases
@@ -33,11 +39,22 @@ export function getDb() {
         );
     }
     
+    // Reuse cached connection if connection string hasn't changed
+    if (cachedDb && cachedConnectionString === connectionString) {
+        return cachedDb;
+    }
+    
     // Create pool with explicit connection string to ensure dev/prod separation
     // createPool works with connection strings and is Edge Runtime compatible
     const pool = createPool({
         connectionString,
     });
     
-    return drizzle(pool, { schema });
+    const db = drizzle(pool, { schema });
+    
+    // Cache the connection
+    cachedDb = db;
+    cachedConnectionString = connectionString;
+    
+    return db;
 }

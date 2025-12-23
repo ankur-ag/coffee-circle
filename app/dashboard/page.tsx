@@ -8,10 +8,13 @@ import { getUserBooking, getUnratedPastBooking } from "@/lib/data";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { LOCATION_REVEAL_DAYS } from "@/lib/config";
+import { Suspense } from "react";
 
 import { CancelBookingButton } from "@/components/features/cancel-booking-button";
 
-export const runtime = "edge";
+// Use Node.js runtime for better database connection pooling and lower latency
+// Edge Runtime has higher latency to Vercel Postgres, causing slow page loads
+// export const runtime = "edge";
 
 /**
  * Check if location should be revealed based on global config
@@ -39,6 +42,7 @@ export default async function DashboardPage() {
     const userId = session.user.id;
     
     // Get active booking first to avoid redirect loop
+    // Run this first as it's the most common case (user has active booking)
     const booking = await getUserBooking(userId);
     
     // Only check for unrated past events if user doesn't have an active booking
@@ -69,13 +73,22 @@ export default async function DashboardPage() {
     const hasLocation = !!location;
     const isRevealed = hasLocation && shouldRevealLocation(meetup.date);
     
-    // Calculate days until reveal
+    // Calculate days until reveal (pre-compute to avoid recalculation)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const eventDate = new Date(meetup.date);
     eventDate.setHours(0, 0, 0, 0);
     const daysUntilEvent = differenceInDays(eventDate, today);
     const daysUntilReveal = Math.max(0, daysUntilEvent - LOCATION_REVEAL_DAYS);
+    
+    // Pre-parse location features to avoid JSON.parse on every render
+    const locationFeatures = location?.features ? JSON.parse(location.features) : [];
+    
+    // Pre-filter attendees to avoid filtering on every render
+    const otherAttendees = attendees.filter((u: typeof attendees[0]) => u.id !== userId);
+    
+    // Pre-format date to avoid formatting on every render
+    const formattedDate = format(new Date(meetup.date), "EEEE, MMMM d");
     
     // Coffee brewing image for hidden locations
     const COFFEE_BREWING_IMAGE = "https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?q=80&w=1000&auto=format&fit=crop";
@@ -103,6 +116,8 @@ export default async function DashboardPage() {
                                     alt={location.name}
                                     fill
                                     className="object-cover"
+                                    priority
+                                    sizes="(max-width: 768px) 100vw, 66vw"
                                 />
                             ) : (
                                 <Image
@@ -110,6 +125,8 @@ export default async function DashboardPage() {
                                     alt="Coffee brewing"
                                     fill
                                     className="object-cover opacity-60"
+                                    priority
+                                    sizes="(max-width: 768px) 100vw, 66vw"
                                 />
                             )}
                             {!isRevealed && hasLocation && (
@@ -163,7 +180,7 @@ export default async function DashboardPage() {
                                 <div className="space-y-4">
                                     <p className="text-muted-foreground">{location.description}</p>
                                     <div className="flex flex-wrap gap-2">
-                                        {JSON.parse(location.features).map((feature: string) => (
+                                        {locationFeatures.map((feature: string) => (
                                             <Badge key={feature} variant="outline">
                                                 {feature}
                                             </Badge>
@@ -201,8 +218,8 @@ export default async function DashboardPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
-                                {attendees.filter((u: typeof attendees[0]) => u.id !== userId).map((user: typeof attendees[0]) => {
-                                    // Extract first name only
+                                {otherAttendees.map((user: typeof attendees[0]) => {
+                                    // Pre-compute user display data to avoid repeated string operations
                                     const firstName = user.name?.split(" ")[0] || user.name || "Guest";
                                     const userImage = user.avatar || user.image;
                                     const userInitial = firstName[0]?.toUpperCase() || "?";
@@ -211,7 +228,15 @@ export default async function DashboardPage() {
                                         <div key={user.id} className="flex items-center gap-4 rounded-lg border p-3 transition-colors hover:bg-secondary/50">
                                             <div className="relative h-12 w-12 overflow-hidden rounded-full bg-muted">
                                                 {userImage ? (
-                                                    <Image src={userImage} alt={firstName} fill className="object-cover" />
+                                                    <Image 
+                                                        src={userImage} 
+                                                        alt={firstName} 
+                                                        fill 
+                                                        className="object-cover"
+                                                        sizes="48px"
+                                                        loading="lazy"
+                                                        unoptimized={false}
+                                                    />
                                                 ) : (
                                                     <div className="flex h-full w-full items-center justify-center bg-gray-300 text-gray-600 font-medium text-lg">
                                                         {userInitial}
@@ -220,7 +245,9 @@ export default async function DashboardPage() {
                                             </div>
                                             <div>
                                                 <p className="font-medium">{firstName}</p>
-                                                <p className="text-sm text-muted-foreground">{user.bio}</p>
+                                                {user.bio && (
+                                                    <p className="text-sm text-muted-foreground">{user.bio}</p>
+                                                )}
                                             </div>
                                         </div>
                                     );
@@ -249,7 +276,7 @@ export default async function DashboardPage() {
                             <div className="flex items-center gap-3">
                                 <Calendar className="h-5 w-5 text-primary" />
                                 <div>
-                                    <p className="font-medium">{format(new Date(meetup.date), "EEEE, MMMM d")}</p>
+                                    <p className="font-medium">{formattedDate}</p>
                                     <p className="text-sm text-muted-foreground">2025</p>
                                 </div>
                             </div>
