@@ -159,7 +159,7 @@ export async function bookMeetup(formData: FormData) {
         }
 
         // Get capacity from meetup (default to 6 if not set)
-        const meetupCapacity = meetupData.capacity ?? 6;
+        const meetupCapacity: number = (meetupData.capacity as number | undefined) ?? 6;
         
         // Check if event is full (dynamic capacity limit for non-admins, including +1 if applicable)
         const isFull = await isMeetupFull(meetupId, hasPlusOne, meetupCapacity);
