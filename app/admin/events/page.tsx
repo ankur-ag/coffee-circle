@@ -3,6 +3,7 @@ import { meetups, coffeeShops, bookings } from "@/lib/schema";
 import { eq, sql, asc } from "drizzle-orm";
 import Link from "next/link";
 import { isMeetupInFuture } from "@/lib/data";
+import { ShowPastToggle } from "./show-past-toggle";
 
 export const runtime = "edge";
 
@@ -29,19 +30,29 @@ async function getMeetups() {
     return result;
 }
 
-export default async function AdminEventsPage() {
+export default async function AdminEventsPage({ searchParams }: { searchParams: Promise<{ showPast?: string }> }) {
+    const { showPast } = await searchParams;
     const allMeetups = await getMeetups();
+    
+    // Filter out past events by default (unless showPast=true)
+    const showPastEvents = showPast === "true";
+    const filteredMeetups = showPastEvents 
+        ? allMeetups 
+        : allMeetups.filter((meetup) => isMeetupInFuture(meetup));
 
     return (
         <div>
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
                 <h1 className="text-2xl sm:text-3xl font-bold">Events Management</h1>
-                <Link
-                    href="/admin/events/new"
-                    className="bg-primary text-white px-4 py-2 rounded hover:bg-primary/90 text-center sm:text-left"
-                >
-                    Create Event
-                </Link>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <ShowPastToggle />
+                    <Link
+                        href="/admin/events/new"
+                        className="bg-primary text-white px-4 py-2 rounded hover:bg-primary/90 text-center sm:text-left"
+                    >
+                        Create Event
+                    </Link>
+                </div>
             </div>
 
             <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -73,7 +84,7 @@ export default async function AdminEventsPage() {
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                        {allMeetups.map((meetup) => {
+                        {filteredMeetups.map((meetup) => {
                             const isExpired = !isMeetupInFuture(meetup);
                             const displayStatus = isExpired ? "expired" : meetup.status;
                             
