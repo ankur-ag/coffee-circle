@@ -503,9 +503,12 @@ export async function submitFeedback(formData: FormData) {
         throw new Error("Unable to submit your feedback. Please try again.");
     }
 
+    // Revalidate all relevant paths to ensure fresh data
     revalidatePath("/past-events");
     revalidatePath(`/past-events/${bookingId}/feedback`);
     revalidatePath("/dashboard");
     
+    // Return success - the client will handle navigation
+    // This prevents the redirect loop by not using server-side redirect
     return { success: true, bookingId };
 }

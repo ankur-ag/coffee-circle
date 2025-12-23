@@ -629,3 +629,424 @@ describe("isMeetupInFuture - Edge Cases", () => {
         expect(isMeetupInFuture(undefined)).toBe(false);
     });
 });
+
+describe("getPastBookings - Feedback Scenarios", () => {
+    let mockQuery: any;
+    let mockDb: any;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        
+        // Mock db.query.bookings.findMany
+        mockQuery = {
+            findMany: vi.fn(),
+        };
+        
+        mockDb = {
+            query: {
+                bookings: mockQuery,
+            },
+        };
+        
+        (getDb as any).mockReturnValue(mockDb);
+    });
+
+    it("should NOT include cancelled future events in past bookings", async () => {
+        const userId = "user-123";
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 7);
+        const futureDateStr = futureDate.toISOString().split("T")[0];
+
+        // User has a booking for a cancelled future event
+        const allBookings = [
+            {
+                id: "booking-123",
+                userId,
+                meetupId: "meetup-456",
+                status: "confirmed",
+                meetup: {
+                    id: "meetup-456",
+                    date: futureDateStr,
+                    status: "cancelled", // Event is cancelled but date is in future
+                    location: null,
+                },
+            },
+        ];
+
+        mockQuery.findMany.mockResolvedValueOnce(allBookings);
+
+        const { getPastBookings } = await import("../data");
+        const pastBookings = await getPastBookings(userId);
+
+        // Should NOT include cancelled future events
+        expect(pastBookings).toHaveLength(0);
+    });
+
+    it("should include past events even if they are cancelled", async () => {
+        const userId = "user-123";
+        const pastDate = new Date();
+        pastDate.setDate(pastDate.getDate() - 7);
+        const pastDateStr = pastDate.toISOString().split("T")[0];
+
+        // User has a booking for a cancelled past event
+        const allBookings = [
+            {
+                id: "booking-123",
+                userId,
+                meetupId: "meetup-456",
+                status: "confirmed",
+                meetup: {
+                    id: "meetup-456",
+                    date: pastDateStr,
+                    status: "cancelled", // Event is cancelled AND date is in past
+                    location: null,
+                },
+            },
+        ];
+
+        mockQuery.findMany.mockResolvedValueOnce(allBookings);
+
+        const { getPastBookings } = await import("../data");
+        const pastBookings = await getPastBookings(userId);
+
+        // Should include cancelled past events (user can still provide feedback)
+        expect(pastBookings).toHaveLength(1);
+        expect(pastBookings[0].id).toBe("booking-123");
+    });
+
+    it("should include past events with status 'past'", async () => {
+        const userId = "user-123";
+        const pastDate = new Date();
+        pastDate.setDate(pastDate.getDate() - 7);
+        const pastDateStr = pastDate.toISOString().split("T")[0];
+
+        const allBookings = [
+            {
+                id: "booking-123",
+                userId,
+                meetupId: "meetup-456",
+                status: "confirmed",
+                meetup: {
+                    id: "meetup-456",
+                    date: pastDateStr,
+                    status: "past", // Explicitly marked as past
+                    location: null,
+                },
+            },
+        ];
+
+        mockQuery.findMany.mockResolvedValueOnce(allBookings);
+
+        const { getPastBookings } = await import("../data");
+        const pastBookings = await getPastBookings(userId);
+
+        expect(pastBookings).toHaveLength(1);
+        expect(pastBookings[0].id).toBe("booking-123");
+    });
+
+    it("should NOT include future events even if status is 'open'", async () => {
+        const userId = "user-123";
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 7);
+        const futureDateStr = futureDate.toISOString().split("T")[0];
+
+        const allBookings = [
+            {
+                id: "booking-123",
+                userId,
+                meetupId: "meetup-456",
+                status: "confirmed",
+                meetup: {
+                    id: "meetup-456",
+                    date: futureDateStr,
+                    status: "open", // Event is open but date is in future
+                    location: null,
+                },
+            },
+        ];
+
+        mockQuery.findMany.mockResolvedValueOnce(allBookings);
+
+        const { getPastBookings } = await import("../data");
+        const pastBookings = await getPastBookings(userId);
+
+        // Should NOT include future events
+        expect(pastBookings).toHaveLength(0);
+    });
+});
+
+describe("getUnratedPastBooking - Feedback Loop Prevention", () => {
+    let mockQuery: any;
+    let mockSelect: any;
+    let mockFrom: any;
+    let mockWhere: any;
+    let mockLimit: any;
+    let mockDb: any;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        
+        // Mock db.query.bookings.findMany for getPastBookings
+        mockQuery = {
+            findMany: vi.fn(),
+        };
+        
+        // Mock db.select().from().where().limit() for getFeedbackForBooking
+        mockLimit = vi.fn();
+        mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
+        mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
+        mockSelect = vi.fn().mockReturnValue({ from: mockFrom });
+        
+        mockDb = {
+            query: {
+                bookings: mockQuery,
+            },
+            select: mockSelect,
+        };
+        
+        (getDb as any).mockReturnValue(mockDb);
+    });
+
+    it("should NOT return cancelled future events for feedback", async () => {
+        const userId = "user-123";
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 7);
+        const futureDateStr = futureDate.toISOString().split("T")[0];
+
+        // User has a booking for a cancelled future event
+        const allBookings = [
+            {
+                id: "booking-123",
+                userId,
+                meetupId: "meetup-456",
+                status: "confirmed",
+                meetup: {
+                    id: "meetup-456",
+                    date: futureDateStr,
+                    status: "cancelled",
+                    location: null,
+                },
+            },
+        ];
+
+        mockQuery.findMany.mockResolvedValueOnce(allBookings);
+        // No feedback exists
+        mockWhere.mockResolvedValueOnce([]);
+
+        const { getUnratedPastBooking } = await import("../data");
+        const result = await getUnratedPastBooking(userId);
+
+        // Should NOT return future events, even if cancelled
+        expect(result).toBeNull();
+    });
+
+    it("should return past events that need feedback", async () => {
+        const userId = "user-123";
+        const pastDate = new Date();
+        pastDate.setDate(pastDate.getDate() - 7);
+        const pastDateStr = pastDate.toISOString().split("T")[0];
+
+        const allBookings = [
+            {
+                id: "booking-123",
+                userId,
+                meetupId: "meetup-456",
+                status: "confirmed",
+                meetup: {
+                    id: "meetup-456",
+                    date: pastDateStr,
+                    status: "open",
+                    location: null,
+                },
+            },
+        ];
+
+        // Mock getPastBookings (which calls db.query.bookings.findMany)
+        mockQuery.findMany.mockResolvedValueOnce(allBookings);
+        // Mock getFeedbackForBooking (which calls db.select().from().where().limit())
+        mockLimit.mockResolvedValueOnce([]);
+
+        const { getUnratedPastBooking } = await import("../data");
+        const result = await getUnratedPastBooking(userId);
+
+        // Should return past event that needs feedback
+        expect(result).toBe("booking-123");
+        expect(mockQuery.findMany).toHaveBeenCalled();
+        expect(mockSelect).toHaveBeenCalled();
+    });
+
+    it("should NOT return events that already have feedback", async () => {
+        const userId = "user-123";
+        const pastDate = new Date();
+        pastDate.setDate(pastDate.getDate() - 7);
+        const pastDateStr = pastDate.toISOString().split("T")[0];
+
+        const allBookings = [
+            {
+                id: "booking-123",
+                userId,
+                meetupId: "meetup-456",
+                status: "confirmed",
+                meetup: {
+                    id: "meetup-456",
+                    date: pastDateStr,
+                    status: "open",
+                    location: null,
+                },
+            },
+        ];
+
+        // Mock getPastBookings
+        mockQuery.findMany.mockResolvedValueOnce(allBookings);
+        // Mock getFeedbackForBooking - feedback already exists
+        // getFeedbackForBooking uses [existingFeedback] = await db.select()...limit(1)
+        // So limit returns an array with one item
+        mockLimit.mockResolvedValueOnce([
+            { id: "feedback-123", bookingId: "booking-123", rating: 5 },
+        ]);
+
+        const { getUnratedPastBooking } = await import("../data");
+        const result = await getUnratedPastBooking(userId);
+
+        // Should NOT return events that already have feedback
+        expect(result).toBeNull();
+        expect(mockQuery.findMany).toHaveBeenCalled();
+        expect(mockSelect).toHaveBeenCalled();
+    });
+
+    it("should skip future events even if they appear in past bookings list", async () => {
+        const userId = "user-123";
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 7);
+        const futureDateStr = futureDate.toISOString().split("T")[0];
+
+        // Edge case: somehow a future event got into the list (shouldn't happen, but test it)
+        const allBookings = [
+            {
+                id: "booking-123",
+                userId,
+                meetupId: "meetup-456",
+                status: "confirmed",
+                meetup: {
+                    id: "meetup-456",
+                    date: futureDateStr,
+                    status: "open",
+                    location: null,
+                },
+            },
+        ];
+
+        mockQuery.findMany.mockResolvedValueOnce(allBookings);
+        // No feedback exists
+        mockWhere.mockResolvedValueOnce([]);
+
+        const { getUnratedPastBooking } = await import("../data");
+        const result = await getUnratedPastBooking(userId);
+
+        // Should skip future events even if they somehow got into the list
+        expect(result).toBeNull();
+    });
+
+    it("should return the first unrated past event when multiple exist", async () => {
+        const userId = "user-123";
+        const pastDate1 = new Date();
+        pastDate1.setDate(pastDate1.getDate() - 14);
+        const pastDateStr1 = pastDate1.toISOString().split("T")[0];
+
+        const pastDate2 = new Date();
+        pastDate2.setDate(pastDate2.getDate() - 7);
+        const pastDateStr2 = pastDate2.toISOString().split("T")[0];
+
+        const allBookings = [
+            {
+                id: "booking-1",
+                userId,
+                meetupId: "meetup-1",
+                status: "confirmed",
+                meetup: {
+                    id: "meetup-1",
+                    date: pastDateStr1,
+                    status: "open",
+                    location: null,
+                },
+            },
+            {
+                id: "booking-2",
+                userId,
+                meetupId: "meetup-2",
+                status: "confirmed",
+                meetup: {
+                    id: "meetup-2",
+                    date: pastDateStr2,
+                    status: "open",
+                    location: null,
+                },
+            },
+        ];
+
+        mockQuery.findMany.mockResolvedValueOnce(allBookings);
+        // First booking has no feedback
+        mockLimit.mockResolvedValueOnce([]);
+        // Second booking also has no feedback (but we should return the first one)
+        // Note: We only check the first booking since getUnratedPastBooking returns on first match
+
+        const { getUnratedPastBooking } = await import("../data");
+        const result = await getUnratedPastBooking(userId);
+
+        // Should return the first unrated past event
+        expect(result).toBe("booking-1");
+    });
+
+    it("should return second event if first already has feedback", async () => {
+        const userId = "user-123";
+        const pastDate1 = new Date();
+        pastDate1.setDate(pastDate1.getDate() - 14);
+        const pastDateStr1 = pastDate1.toISOString().split("T")[0];
+
+        const pastDate2 = new Date();
+        pastDate2.setDate(pastDate2.getDate() - 7);
+        const pastDateStr2 = pastDate2.toISOString().split("T")[0];
+
+        const allBookings = [
+            {
+                id: "booking-1",
+                userId,
+                meetupId: "meetup-1",
+                status: "confirmed",
+                meetup: {
+                    id: "meetup-1",
+                    date: pastDateStr1,
+                    status: "open",
+                    location: null,
+                },
+            },
+            {
+                id: "booking-2",
+                userId,
+                meetupId: "meetup-2",
+                status: "confirmed",
+                meetup: {
+                    id: "meetup-2",
+                    date: pastDateStr2,
+                    status: "open",
+                    location: null,
+                },
+            },
+        ];
+
+        mockQuery.findMany.mockResolvedValueOnce(allBookings);
+        // First booking already has feedback
+        mockLimit.mockResolvedValueOnce([
+            { id: "feedback-1", bookingId: "booking-1", rating: 5 },
+        ]);
+        // Second booking has no feedback
+        mockLimit.mockResolvedValueOnce([]);
+
+        const { getUnratedPastBooking } = await import("../data");
+        const result = await getUnratedPastBooking(userId);
+
+        // Should return the second event since first already has feedback
+        expect(result).toBe("booking-2");
+    });
+});
+

@@ -236,15 +236,18 @@ export async function getPastBookings(userId: string) {
         }
     }) as any[];
 
-    // Filter for past bookings - bookings that are NOT active (i.e., past today's date)
+    // Filter for past bookings - only bookings where the event date is actually in the past
+    // This ensures we don't ask for feedback on future events, even if they're cancelled
     const pastBookings = allBookings.filter((booking: any) => {
-        if (!booking.meetup) return false;
+        if (!booking.meetup || !booking.meetup.date) return false;
         
         // Check if meetup status is "past"
         if (booking.meetup.status === "past") return true;
         
-        // Check if the booking is not active (past date)
-        return !isBookingActive(booking);
+        // Only consider it past if the event date is actually in the past
+        // Don't rely on isBookingActive because that also checks for cancelled events
+        // We want to only get bookings where the date has passed
+        return !isMeetupInFuture(booking.meetup);
     });
 
     return pastBookings;
@@ -291,11 +294,12 @@ export async function getBookingById(bookingId: string, userId: string) {
 /**
  * Find the first past booking that doesn't have feedback yet
  * Returns the booking ID if found, null otherwise
+ * Only returns bookings where the event date is actually in the past
  */
 export async function getUnratedPastBooking(userId: string): Promise<string | null> {
     const db = getDb();
     
-    // Get all past bookings for the user
+    // Get all past bookings for the user (only events with past dates)
     const pastBookings = await getPastBookings(userId);
     
     if (pastBookings.length === 0) {
@@ -303,10 +307,17 @@ export async function getUnratedPastBooking(userId: string): Promise<string | nu
     }
     
     // Check each past booking for feedback
+    // Double-check that the event date is actually in the past before asking for feedback
     for (const booking of pastBookings) {
+        // Ensure the event date is actually in the past (not just cancelled future event)
+        if (!booking.meetup || !booking.meetup.date) continue;
+        
+        // Skip if event is in the future (shouldn't happen with getPastBookings, but double-check)
+        if (isMeetupInFuture(booking.meetup)) continue;
+        
         const existingFeedback = await getFeedbackForBooking(booking.id);
         if (!existingFeedback) {
-            // Found an unrated past booking
+            // Found an unrated past booking with a past event date
             return booking.id;
         }
     }

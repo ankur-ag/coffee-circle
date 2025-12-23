@@ -38,13 +38,19 @@ export default async function DashboardPage() {
 
     const userId = session.user.id;
     
-    // Check if there's an unrated past event - redirect to feedback if so
-    const unratedBookingId = await getUnratedPastBooking(userId);
-    if (unratedBookingId) {
-        redirect(`/past-events/${unratedBookingId}/feedback`);
-    }
-    
+    // Get active booking first to avoid redirect loop
     const booking = await getUserBooking(userId);
+    
+    // Only check for unrated past events if user doesn't have an active booking
+    // This prevents redirect loops after submitting feedback
+    // If user has an active booking, they should see that instead of being asked for feedback
+    if (!booking) {
+        // Check if there's an unrated past event - redirect to feedback if so
+        const unratedBookingId = await getUnratedPastBooking(userId);
+        if (unratedBookingId) {
+            redirect(`/past-events/${unratedBookingId}/feedback`);
+        }
+    }
 
     if (!booking) {
         return (
