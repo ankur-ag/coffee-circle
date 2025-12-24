@@ -46,8 +46,12 @@ export function getDb() {
     
     // Create pool with explicit connection string to ensure dev/prod separation
     // createPool works with connection strings and is Edge Runtime compatible
+    // Note: @vercel/postgres createPool manages connection pooling automatically
+    // For better performance, the pool is reused across requests in Node.js runtime
     const pool = createPool({
         connectionString,
+        // Vercel Postgres pools are managed automatically, but we can optimize
+        // by ensuring the connection is established early
     });
     
     const db = drizzle(pool, { schema });
