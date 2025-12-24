@@ -4,7 +4,10 @@ import { sendReminderEmail } from "@/lib/email";
 import { REMINDER_EMAIL_DAYS } from "@/lib/config";
 import { format } from "date-fns";
 
-export const runtime = "edge";
+// Use Node.js runtime for better database connection performance
+// Edge Runtime has cold starts and slower database connections
+// Node.js runtime provides better connection pooling
+// export const runtime = "edge";
 
 export async function GET(request: Request) {
     // Optional: Add authentication/authorization check
