@@ -15,11 +15,13 @@ async function getBookings(locationId?: string, eventDate?: string) {
         .select({
             id: bookings.id,
             status: bookings.status,
+            hasPlusOne: bookings.hasPlusOne,
             createdAt: bookings.createdAt,
             userName: users.name,
             userEmail: users.email,
             meetupDate: meetups.date,
             meetupTime: meetups.time,
+            tableName: meetups.tableName,
             locationName: coffeeShops.name,
             locationCity: coffeeShops.city,
         })
@@ -72,64 +74,80 @@ export default async function AdminBookingsPage({ searchParams }: { searchParams
             <div className="bg-white rounded-lg shadow overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                User
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                Event
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">
-                                Location
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                Status
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">
-                                Booked At
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                Actions
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {allBookings.map((booking: typeof allBookings[0]) => (
-                            <tr key={booking.id} className="hover:bg-gray-50">
-                                <td className="px-3 sm:px-6 py-4">
-                                    <div className="text-sm font-medium text-gray-900">{booking.userName}</div>
-                                    <div className="text-sm text-gray-500 truncate max-w-[150px] sm:max-w-none">{booking.userEmail}</div>
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 text-sm">
-                                    <div>{booking.meetupDate}</div>
-                                    <div className="text-gray-500">{booking.meetupTime}</div>
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 text-sm hidden sm:table-cell">
-                                    <div>{booking.locationName}</div>
-                                    <div className="text-gray-500">{booking.locationCity}</div>
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 text-sm">
-                                    <span
-                                        className={`px-2 py-1 rounded text-xs ${booking.status === "confirmed"
-                                            ? "bg-green-100 text-green-800"
-                                            : "bg-red-100 text-red-800"
-                                            }`}
-                                    >
-                                        {booking.status}
-                                    </span>
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 hidden md:table-cell">
-                                    {booking.createdAt ? new Date(booking.createdAt).toLocaleDateString() : "-"}
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 text-sm">
-                                    {booking.status === "confirmed" && (
-                                        <CancelBookingButton bookingId={booking.id} />
-                                    )}
-                                </td>
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                    User
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Event
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Table
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                    +1
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">
+                                    Location
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Status
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">
+                                    Booked At
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Actions
+                                </th>
                             </tr>
-                        ))}
-                    </tbody>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {allBookings.map((booking: typeof allBookings[0]) => (
+                                <tr key={booking.id} className="hover:bg-gray-50">
+                                    <td className="px-3 sm:px-6 py-4">
+                                        <div className="text-sm font-medium text-gray-900">{booking.userName}</div>
+                                        <div className="text-sm text-gray-500 truncate max-w-[150px] sm:max-w-none">{booking.userEmail}</div>
+                                    </td>
+                                    <td className="px-3 sm:px-6 py-4 text-sm">
+                                        <div>{booking.meetupDate}</div>
+                                        <div className="text-gray-500">{booking.meetupTime}</div>
+                                    </td>
+                                    <td className="px-3 sm:px-6 py-4 text-sm">
+                                        <div className="font-medium">{booking.tableName}</div>
+                                    </td>
+                                    <td className="px-3 sm:px-6 py-4 text-sm text-center">
+                                        {booking.hasPlusOne === "true" ? (
+                                            <span className="text-blue-600 font-bold px-2 py-0.5 bg-blue-50 rounded-full text-xs">Yes</span>
+                                        ) : (
+                                            <span className="text-gray-400 text-xs">No</span>
+                                        )}
+                                    </td>
+                                    <td className="px-3 sm:px-6 py-4 text-sm hidden sm:table-cell">
+                                        <div>{booking.locationName}</div>
+                                        <div className="text-gray-500">{booking.locationCity}</div>
+                                    </td>
+                                    <td className="px-3 sm:px-6 py-4 text-sm">
+                                        <span
+                                            className={`px-2 py-1 rounded text-xs ${booking.status === "confirmed"
+                                                ? "bg-green-100 text-green-800"
+                                                : "bg-red-100 text-red-800"
+                                                }`}
+                                        >
+                                            {booking.status}
+                                        </span>
+                                    </td>
+                                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 hidden md:table-cell">
+                                        {booking.createdAt ? new Date(booking.createdAt).toLocaleDateString() : "-"}
+                                    </td>
+                                    <td className="px-3 sm:px-6 py-4 text-sm">
+                                        {booking.status === "confirmed" && (
+                                            <CancelBookingButton bookingId={booking.id} />
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
                     </table>
                 </div>
             </div>
