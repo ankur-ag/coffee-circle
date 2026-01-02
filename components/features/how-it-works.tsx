@@ -1,21 +1,21 @@
-import { LogIn, Calendar, MapPin } from "lucide-react";
+import { Clock, Coffee, MessageSquare } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const steps = [
     {
-        icon: LogIn,
-        title: "1. Sign In",
-        description: "Sign in with Google to create your account. Set your language preference for Saturday (Chinese) or Sunday (English) meetups.",
+        icon: Clock,
+        title: "1. Pick a time",
+        description: "Choose Saturday or Sunday at 2:00 PM. That’s it. No planning, no coordination.",
     },
     {
-        icon: Calendar,
-        title: "2. Book Your Spot",
-        description: "Choose an upcoming event date that matches your language preference. Groups are limited to 6 people, and you can bring a +1.",
+        icon: Coffee,
+        title: "2. We set the table",
+        description: "You’ll be placed with 4–6 people at a nearby café. We’ll share the café details before you meet.",
     },
     {
-        icon: MapPin,
-        title: "3. Meet & Connect",
-        description: "The location is revealed 2 days before the event. You'll receive a reminder email, then meet your group at the curated cafe!",
+        icon: MessageSquare,
+        title: "3. Show up and connect",
+        description: "Grab a coffee, sit down, and enjoy easy conversation. Stay as long as you like.",
     },
 ];
 
