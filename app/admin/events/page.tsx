@@ -19,6 +19,7 @@ async function getMeetups() {
             language: meetups.language,
             locationName: coffeeShops.name,
             locationCity: coffeeShops.city,
+            tableName: meetups.tableName,
             attendeeCount: sql<number>`count(${bookings.id})`,
         })
         .from(meetups)
@@ -33,11 +34,11 @@ async function getMeetups() {
 export default async function AdminEventsPage({ searchParams }: { searchParams: Promise<{ showPast?: string }> }) {
     const { showPast } = await searchParams;
     const allMeetups = await getMeetups();
-    
+
     // Filter out past events by default (unless showPast=true)
     const showPastEvents = showPast === "true";
-    const filteredMeetups = showPastEvents 
-        ? allMeetups 
+    const filteredMeetups = showPastEvents
+        ? allMeetups
         : allMeetups.filter((meetup: typeof allMeetups[0]) => isMeetupInFuture(meetup));
 
     return (
@@ -58,79 +59,79 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
             <div className="bg-white rounded-lg shadow overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                Date
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                Time
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">
-                                Location
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                Language
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                Attendees
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">
-                                Status
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                Actions
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredMeetups.map((meetup: typeof filteredMeetups[0]) => {
-                            const isExpired = !isMeetupInFuture(meetup);
-                            const displayStatus = isExpired ? "expired" : meetup.status;
-                            
-                            return (
-                                <tr key={meetup.id} className={`hover:bg-gray-50 ${isExpired ? "opacity-60" : ""}`}>
-                                    <td className="px-3 sm:px-6 py-4 text-sm">
-                                        {meetup.date}
-                                    </td>
-                                    <td className="px-3 sm:px-6 py-4 text-sm">
-                                        {meetup.time}
-                                    </td>
-                                    <td className="px-3 sm:px-6 py-4 text-sm hidden sm:table-cell">
-                                        <div>{meetup.locationName}</div>
-                                        <div className="text-gray-500">{meetup.locationCity}</div>
-                                    </td>
-                                    <td className="px-3 sm:px-6 py-4 text-sm">
-                                        {meetup.language === "zh" ? "🇨🇳 中文" : "🇬🇧 English"}
-                                    </td>
-                                    <td className="px-3 sm:px-6 py-4 text-sm">
-                                        {meetup.attendeeCount}
-                                    </td>
-                                    <td className="px-3 sm:px-6 py-4 text-sm hidden md:table-cell">
-                                        <span
-                                            className={`px-2 py-1 rounded text-xs ${
-                                                isExpired
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Date
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Time
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">
+                                    Location
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Language
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Attendees
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">
+                                    Status
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Actions
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {filteredMeetups.map((meetup: typeof filteredMeetups[0]) => {
+                                const isExpired = !isMeetupInFuture(meetup);
+                                const displayStatus = isExpired ? "expired" : meetup.status;
+
+                                return (
+                                    <tr key={meetup.id} className={`hover:bg-gray-50 ${isExpired ? "opacity-60" : ""}`}>
+                                        <td className="px-3 sm:px-6 py-4 text-sm">
+                                            {meetup.date}
+                                        </td>
+                                        <td className="px-3 sm:px-6 py-4 text-sm">
+                                            {meetup.time}
+                                        </td>
+                                        <td className="px-3 sm:px-6 py-4 text-sm hidden sm:table-cell">
+                                            <div>{meetup.locationName}</div>
+                                            <div className="text-gray-500">{meetup.locationCity}</div>
+                                            <div className="text-xs text-gray-400 mt-1">{meetup.tableName}</div>
+                                        </td>
+                                        <td className="px-3 sm:px-6 py-4 text-sm">
+                                            {meetup.language === "zh" ? "🇨🇳 中文" : "🇬🇧 English"}
+                                        </td>
+                                        <td className="px-3 sm:px-6 py-4 text-sm">
+                                            {meetup.attendeeCount}
+                                        </td>
+                                        <td className="px-3 sm:px-6 py-4 text-sm hidden md:table-cell">
+                                            <span
+                                                className={`px-2 py-1 rounded text-xs ${isExpired
                                                     ? "bg-red-100 text-red-800"
                                                     : meetup.status === "open"
-                                                    ? "bg-green-100 text-green-800"
-                                                    : "bg-gray-100 text-gray-800"
-                                            }`}
-                                        >
-                                            {displayStatus}
-                                        </span>
-                                    </td>
-                                    <td className="px-3 sm:px-6 py-4 text-sm">
-                                        <Link
-                                            href={`/admin/events/${meetup.id}`}
-                                            className="text-primary hover:underline"
-                                        >
-                                            Edit
-                                        </Link>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
+                                                        ? "bg-green-100 text-green-800"
+                                                        : "bg-gray-100 text-gray-800"
+                                                    }`}
+                                            >
+                                                {displayStatus}
+                                            </span>
+                                        </td>
+                                        <td className="px-3 sm:px-6 py-4 text-sm">
+                                            <Link
+                                                href={`/admin/events/${meetup.id}`}
+                                                className="text-primary hover:underline"
+                                            >
+                                                Edit
+                                            </Link>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
                     </table>
                 </div>
             </div>

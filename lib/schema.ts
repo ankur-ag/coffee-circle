@@ -80,6 +80,7 @@ export const meetups = pgTable("meetups", {
     status: text("status").notNull().default("open"),
     language: text("language").notNull().default("en"),
     capacity: integer("capacity").notNull().default(6), // Dynamic capacity, default 6
+    tableName: text("table_name").notNull().default("Table 1"),
 });
 
 export const bookings = pgTable("bookings", {

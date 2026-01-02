@@ -3,7 +3,7 @@
 import { auth } from "@/auth";
 import { getDb } from "@/lib/db";
 import { users, meetups, coffeeShops, bookings } from "@/lib/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -50,6 +50,21 @@ export async function createMeetup(formData: FormData) {
     }
 
     const db = getDb();
+
+    // Check for existing meetups at the same location and date
+    const existingMeetups = await db
+        .select({ count: count() })
+        .from(meetups)
+        .where(and(
+            eq(meetups.locationId, locationId),
+            eq(meetups.date, date)
+        ));
+
+    console.log("Existing meetups count:", existingMeetups[0].count);
+
+    const nextTableNumber = existingMeetups[0].count + 1;
+    const tableName = `Table ${nextTableNumber}`;
+
     await db.insert(meetups).values({
         id: crypto.randomUUID(),
         date,
@@ -58,6 +73,7 @@ export async function createMeetup(formData: FormData) {
         language,
         status: "open",
         capacity,
+        tableName,
     });
 
     revalidatePath("/admin/events");
@@ -201,17 +217,17 @@ export async function cancelBookingAdmin(bookingId: string) {
     const [userResult, meetupResult] = await Promise.all([
         bookingResult.userId
             ? db
-                  .select()
-                  .from(users)
-                  .where(eq(users.id, bookingResult.userId))
-                  .limit(1)
+                .select()
+                .from(users)
+                .where(eq(users.id, bookingResult.userId))
+                .limit(1)
             : Promise.resolve([]),
         bookingResult.meetupId
             ? db
-                  .select()
-                  .from(meetups)
-                  .where(eq(meetups.id, bookingResult.meetupId))
-                  .limit(1)
+                .select()
+                .from(meetups)
+                .where(eq(meetups.id, bookingResult.meetupId))
+                .limit(1)
             : Promise.resolve([]),
     ]) as [any[], any[]];
 

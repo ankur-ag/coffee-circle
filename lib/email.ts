@@ -50,17 +50,18 @@ export async function sendBookingConfirmation(details: {
     locationName: string;
     locationAddress: string;
     locationCity: string;
+    tableName?: string;
 }) {
     // Check if location should be revealed based on event date
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const eventDate = new Date(details.eventDate);
     eventDate.setHours(0, 0, 0, 0);
-    
+
     const daysUntilEvent = differenceInDays(eventDate, today);
     const shouldRevealLocation = daysUntilEvent <= LOCATION_REVEAL_DAYS;
-    
+
     return sendEmail(
         details.to,
         "Your Coffee Meetup is Confirmed! ☕",
@@ -78,6 +79,7 @@ export async function sendCancellationConfirmation(details: {
     eventTime: string;
     locationName: string;
     locationCity: string;
+    tableName?: string;
 }) {
     return sendEmail(
         details.to,
@@ -94,6 +96,7 @@ export async function sendReminderEmail(details: {
     locationName: string;
     locationAddress: string;
     locationCity: string;
+    tableName?: string;
 }) {
     return sendEmail(
         details.to,

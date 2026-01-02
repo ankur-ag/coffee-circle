@@ -63,7 +63,7 @@ export async function bookMeetup(formData: FormData) {
                         .from(meetups)
                         .where(eq(meetups.id, booking.meetupId))
                         .limit(1) as any[];
-                    
+
                     if (meetup.length > 0) {
                         // Get location if it exists
                         let location = null;
@@ -80,7 +80,7 @@ export async function bookMeetup(formData: FormData) {
                                 console.warn("Failed to fetch location:", locationError);
                             }
                         }
-                        
+
                         return {
                             ...booking,
                             meetup: {
@@ -122,15 +122,15 @@ export async function bookMeetup(formData: FormData) {
             console.error("Database error fetching meetup:", dbError);
             throw new Error("Unable to verify the event. Please try again.");
         }
-        
+
         if (meetupResult.length === 0) {
             const error = new Error("This event is no longer available. Please select another event.");
             (error as any).userFriendly = true;
             throw error;
         }
-        
+
         const meetupData = meetupResult[0];
-        
+
         // Get location if it exists
         let location = null;
         if (meetupData.locationId) {
@@ -146,7 +146,7 @@ export async function bookMeetup(formData: FormData) {
                 console.warn("Failed to fetch location:", locationError);
             }
         }
-        
+
         const meetup = {
             ...meetupData,
             location,
@@ -160,7 +160,7 @@ export async function bookMeetup(formData: FormData) {
 
         // Get capacity from meetup (default to 6 if not set)
         const meetupCapacity: number = (meetupData.capacity as number | undefined) ?? 6;
-        
+
         // Check if event is full (dynamic capacity limit for non-admins, including +1 if applicable)
         const isFull = await isMeetupFull(meetupId, hasPlusOne, meetupCapacity);
         const isAdmin = session.user.role === "admin";
@@ -202,6 +202,7 @@ export async function bookMeetup(formData: FormData) {
                     locationName: meetup.location?.name || "TBD",
                     locationAddress: meetup.location?.location || "TBD",
                     locationCity: meetup.location?.city || "TBD",
+                    tableName: (meetup as any).tableName,
                 });
             }
         } catch (emailError) {
@@ -211,20 +212,20 @@ export async function bookMeetup(formData: FormData) {
 
         revalidatePath("/dashboard");
         revalidatePath("/book");
-        
+
         return { success: true, bookingId };
     } catch (error) {
         console.error("Failed to book meetup (Detailed):", error);
-        
+
         // If it's already a user-friendly error, re-throw it as-is
         if (error instanceof Error && (error as any).userFriendly) {
             throw error;
         }
-        
+
         // For database errors or other technical errors, provide a user-friendly message
         if (error instanceof Error) {
             const errorMessage = error.message.toLowerCase();
-            
+
             // Check for common database errors and provide user-friendly messages
             if (errorMessage.includes("connection") || errorMessage.includes("timeout") || errorMessage.includes("network")) {
                 throw new Error("Unable to connect to the server. Please check your internet connection and try again.");
@@ -235,12 +236,12 @@ export async function bookMeetup(formData: FormData) {
             } else {
                 // For other errors, use the original message if it's user-friendly, otherwise provide a generic message
                 // Check if the error message looks user-friendly (doesn't contain technical terms)
-                const isTechnicalError = errorMessage.includes("failed query") || 
-                                        errorMessage.includes("sql") || 
-                                        errorMessage.includes("database") ||
-                                        errorMessage.includes("postgres") ||
-                                        errorMessage.includes("error code");
-                
+                const isTechnicalError = errorMessage.includes("failed query") ||
+                    errorMessage.includes("sql") ||
+                    errorMessage.includes("database") ||
+                    errorMessage.includes("postgres") ||
+                    errorMessage.includes("error code");
+
                 if (isTechnicalError) {
                     throw new Error("Something went wrong while processing your booking. Please try again or contact support if the problem persists.");
                 } else {
@@ -249,7 +250,7 @@ export async function bookMeetup(formData: FormData) {
                 }
             }
         }
-        
+
         // Fallback for unknown errors
         throw new Error("Something went wrong. Please try again.");
     }
@@ -354,6 +355,7 @@ export async function cancelBooking(bookingId: string) {
                     eventTime: bookingWithDetails.meetup?.time || "TBD",
                     locationName: bookingWithDetails.meetup?.location?.name || "TBD",
                     locationCity: bookingWithDetails.meetup?.location?.city || "TBD",
+                    tableName: (bookingWithDetails.meetup as any)?.tableName,
                 });
             } catch (emailError) {
                 console.error("Failed to send cancellation email:", emailError);
@@ -361,12 +363,12 @@ export async function cancelBooking(bookingId: string) {
         }
     } catch (error) {
         console.error("Failed to cancel booking:", error);
-        
+
         // If it's already a user-friendly error, re-throw it as-is
         if (error instanceof Error && (error as any).userFriendly) {
             throw error;
         }
-        
+
         throw new Error(`Failed to cancel booking: ${error instanceof Error ? error.message : String(error)}`);
     }
 
@@ -414,18 +416,18 @@ export async function updateUserProfile(formData: FormData) {
             .where(eq(users.id, session.user.id));
 
         console.log("Profile updated successfully:", updateData);
-        
+
         revalidatePath("/profile");
         revalidatePath("/dashboard");
         return { success: true };
     } catch (error) {
         console.error("Failed to update profile:", error);
-        
+
         // If it's already a user-friendly error, re-throw it as-is
         if (error instanceof Error && (error as any).userFriendly) {
             throw error;
         }
-        
+
         throw new Error(`Failed to update profile: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
@@ -468,7 +470,7 @@ export async function submitFeedback(formData: FormData) {
             .from(feedback)
             .where(eq(feedback.bookingId, bookingId))
             .limit(1) as any[];
-        
+
         const existingFeedback = existingFeedbackResult.length > 0 ? existingFeedbackResult[0] : null;
 
         if (existingFeedback) {
@@ -493,12 +495,12 @@ export async function submitFeedback(formData: FormData) {
         }
     } catch (error) {
         console.error("Failed to submit feedback:", error);
-        
+
         // If it's already a user-friendly error, re-throw it as-is
         if (error instanceof Error && (error as any).userFriendly) {
             throw error;
         }
-        
+
         // For other errors, provide a user-friendly message
         throw new Error("Unable to submit your feedback. Please try again.");
     }
@@ -507,7 +509,7 @@ export async function submitFeedback(formData: FormData) {
     revalidatePath("/past-events");
     revalidatePath(`/past-events/${bookingId}/feedback`);
     revalidatePath("/dashboard");
-    
+
     // Return success - the client will handle navigation
     // This prevents the redirect loop by not using server-side redirect
     return { success: true, bookingId };

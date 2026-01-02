@@ -9,13 +9,13 @@ import { REMINDER_EMAIL_DAYS } from "@/lib/config";
  */
 export function isMeetupInFuture(meetup: any): boolean {
     if (!meetup?.date) return false;
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const meetupDate = new Date(meetup.date);
     meetupDate.setHours(0, 0, 0, 0);
-    
+
     return meetupDate >= today;
 }
 
@@ -30,7 +30,7 @@ export function isBookingActive(booking: any): boolean {
     if (!booking?.meetup?.date) return false;
     if (booking.status !== "confirmed") return false;
     if (booking.meetup?.status === "cancelled") return false;
-    
+
     return isMeetupInFuture(booking.meetup);
 }
 
@@ -40,7 +40,7 @@ export function isBookingActive(booking: any): boolean {
  */
 export async function hasActiveBooking(userId: string): Promise<boolean> {
     const db = getDb();
-    
+
     // Get all confirmed bookings for the user (Edge Runtime compatible)
     const confirmedBookings = await db
         .select()
@@ -49,23 +49,23 @@ export async function hasActiveBooking(userId: string): Promise<boolean> {
             eq(bookings.userId, userId),
             eq(bookings.status, "confirmed")
         )) as any[];
-    
+
     if (confirmedBookings.length === 0) {
         return false;
     }
-    
+
     // Get meetups for these bookings to check if they're in the future and not cancelled
     const meetupIds = confirmedBookings.map((b: any) => b.meetupId);
-    
+
     if (meetupIds.length === 0) {
         return false;
     }
-    
+
     const meetupsResult = await db
         .select()
         .from(meetups)
         .where(inArray(meetups.id, meetupIds)) as any[];
-    
+
     // Check if any booking is for a future meetup that is not cancelled
     for (const booking of confirmedBookings) {
         const meetup = meetupsResult.find((m: any) => m.id === booking.meetupId);
@@ -77,7 +77,7 @@ export async function hasActiveBooking(userId: string): Promise<boolean> {
             return true;
         }
     }
-    
+
     return false;
 }
 
@@ -143,11 +143,19 @@ export async function getUserBooking(userId: string) {
     const attendeeUserIds = new Set(attendeeBookings.map((b: any) => b.userId));
     const attendees = allUsers.filter((u: any) => attendeeUserIds.has(u.id));
 
+    // Check if there are multiple makeups (tables) at this location on this date
+    const siblingMeetups = allMeetups.filter((m: any) =>
+        m.locationId === activeMeetup.locationId &&
+        m.date === activeMeetup.date
+    );
+    const hasMultipleTables = siblingMeetups.length > 1;
+
     return {
         ...activeBooking,
         meetup: {
             ...activeMeetup,
             location,
+            hasMultipleTables,
         },
         attendees,
     };
@@ -207,7 +215,24 @@ export async function getUpcomingMeetups() {
         })
     );
 
-    return meetupsWithAttendees;
+    // Calculate hasMultipleTables for each meetup
+    // We do this by checking if there are other meetups at the same location and time
+    const result = meetupsWithAttendees.map((meetup) => {
+        const siblings = meetupsWithAttendees.filter((m) =>
+            m.locationId === meetup.locationId &&
+            m.date === meetup.date &&
+            m.time === meetup.time &&
+            m.id !== meetup.id
+        );
+
+        return {
+            ...meetup,
+            hasMultipleTables: siblings.length > 0,
+            tableName: (meetup as any).tableName || "Table 1" // Ensure fallback
+        };
+    });
+
+    return result;
 }
 
 /**
@@ -215,7 +240,7 @@ export async function getUpcomingMeetups() {
  */
 export async function isMeetupFull(meetupId: string, includePlusOne: boolean = false, capacity?: number): Promise<boolean> {
     const db = getDb();
-    
+
     // Get meetup to retrieve capacity if not provided
     let meetupCapacity: number;
     if (capacity !== undefined) {
@@ -226,14 +251,14 @@ export async function isMeetupFull(meetupId: string, includePlusOne: boolean = f
             .from(meetups)
             .where(eq(meetups.id, meetupId))
             .limit(1) as any[];
-        
+
         if (meetupResult.length > 0) {
             meetupCapacity = (meetupResult[0].capacity as number | undefined) ?? 6;
         } else {
             meetupCapacity = 6; // Default if meetup not found
         }
     }
-    
+
     // Use standard select for Edge Runtime compatibility
     const confirmedBookings = await db
         .select()
@@ -253,7 +278,7 @@ export async function isMeetupFull(meetupId: string, includePlusOne: boolean = f
 
     // If checking with a potential +1, add 1 more to the count
     const checkCount = includePlusOne ? totalAttendees + 1 : totalAttendees;
-    
+
     return checkCount >= meetupCapacity;
 }
 
@@ -285,10 +310,10 @@ export async function getPastBookings(userId: string) {
     // Combine bookings with meetups and locations (all in-memory, no DB queries)
     const bookingsWithDetails = allBookings.map((booking: any) => {
         const meetup = allMeetups.find((m: any) => m.id === booking.meetupId);
-        const location = meetup?.locationId 
+        const location = meetup?.locationId
             ? allLocations.find((l: any) => l.id === meetup.locationId)
             : null;
-        
+
         return {
             ...booking,
             meetup: meetup ? { ...meetup, location } : null,
@@ -299,10 +324,10 @@ export async function getPastBookings(userId: string) {
     // This ensures we don't ask for feedback on future events, even if they're cancelled
     const pastBookings = bookingsWithDetails.filter((booking: any) => {
         if (!booking.meetup || !booking.meetup.date) return false;
-        
+
         // Check if meetup status is "past"
         if (booking.meetup.status === "past") return true;
-        
+
         // Only consider it past if the event date is actually in the past
         // Don't rely on isBookingActive because that also checks for cancelled events
         // We want to only get bookings where the date has passed
@@ -336,7 +361,7 @@ export async function getFeedbackForBooking(bookingId: string) {
 
 export async function getBookingById(bookingId: string, userId: string) {
     const db = getDb();
-    
+
     // Get booking (Edge Runtime compatible)
     const [bookingResult] = await db
         .select()
@@ -353,10 +378,10 @@ export async function getBookingById(bookingId: string, userId: string) {
     const [meetupResult] = await Promise.all([
         bookingResult.meetupId
             ? db
-                  .select()
-                  .from(meetups)
-                  .where(eq(meetups.id, bookingResult.meetupId))
-                  .limit(1)
+                .select()
+                .from(meetups)
+                .where(eq(meetups.id, bookingResult.meetupId))
+                .limit(1)
             : Promise.resolve([]),
     ]) as [any[]];
 
@@ -388,39 +413,39 @@ export async function getBookingById(bookingId: string, userId: string) {
  */
 export async function getUnratedPastBooking(userId: string): Promise<string | null> {
     const db = getDb();
-    
+
     // Get all past bookings for the user (only events with past dates)
     const pastBookings = await getPastBookings(userId);
-    
+
     if (pastBookings.length === 0) {
         return null;
     }
-    
+
     // Batch check feedback for all past bookings at once (Edge Runtime compatible)
     const bookingIds = pastBookings.map((b: any) => b.id);
     const existingFeedback = await db
         .select()
         .from(feedback)
         .where(inArray(feedback.bookingId, bookingIds)) as any[];
-    
+
     const feedbackBookingIds = new Set(existingFeedback.map((f: any) => f.bookingId));
-    
+
     // Find the first past booking without feedback
     // Double-check that the event date is actually in the past before asking for feedback
     for (const booking of pastBookings) {
         // Ensure the event date is actually in the past (not just cancelled future event)
         if (!booking.meetup || !booking.meetup.date) continue;
-        
+
         // Skip if event is in the future (shouldn't happen with getPastBookings, but double-check)
         if (isMeetupInFuture(booking.meetup)) continue;
-        
+
         // Check if feedback exists (from batched query)
         if (!feedbackBookingIds.has(booking.id)) {
             // Found an unrated past booking with a past event date
             return booking.id;
         }
     }
-    
+
     return null;
 }
 
@@ -435,7 +460,7 @@ export async function getEventsWithAttendees(daysFromNow: number = 2) {
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + daysFromNow);
     targetDate.setHours(0, 0, 0, 0);
-    
+
     const targetDateStr = targetDate.toISOString().split("T")[0];
 
     // Get all meetups using standard select (Edge Runtime compatible)
@@ -466,7 +491,7 @@ export async function getEventsWithAttendees(daysFromNow: number = 2) {
                         .from(users)
                         .where(eq(users.id, booking.userId))
                         .limit(1) as any[];
-                    
+
                     return {
                         ...booking,
                         user: userResult.length > 0 ? userResult[0] : null,

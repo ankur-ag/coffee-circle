@@ -11,6 +11,7 @@ import { LOCATION_REVEAL_DAYS } from "@/lib/config";
 import { Suspense } from "react";
 
 import { CancelBookingButton } from "@/components/features/cancel-booking-button";
+import { CafeImage } from "@/components/ui/cafe-image";
 
 // Use Node.js runtime for better database connection pooling and lower latency
 // Edge Runtime has higher latency to Vercel Postgres, causing slow page loads
@@ -22,12 +23,12 @@ import { CancelBookingButton } from "@/components/features/cancel-booking-button
 function shouldRevealLocation(eventDate: string): boolean {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const event = new Date(eventDate);
     event.setHours(0, 0, 0, 0);
-    
+
     const daysUntilEvent = differenceInDays(event, today);
-    
+
     // Reveal location based on LOCATION_REVEAL_DAYS config
     return daysUntilEvent <= LOCATION_REVEAL_DAYS;
 }
@@ -40,11 +41,11 @@ export default async function DashboardPage() {
     }
 
     const userId = session.user.id;
-    
+
     // Get active booking first to avoid redirect loop
     // Run this first as it's the most common case (user has active booking)
     const booking = await getUserBooking(userId);
-    
+
     // Only check for unrated past events if user doesn't have an active booking
     // This prevents redirect loops after submitting feedback
     // If user has an active booking, they should see that instead of being asked for feedback
@@ -72,7 +73,7 @@ export default async function DashboardPage() {
     const location = meetup.location;
     const hasLocation = !!location;
     const isRevealed = hasLocation && shouldRevealLocation(meetup.date);
-    
+
     // Calculate days until reveal (pre-compute to avoid recalculation)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -80,16 +81,16 @@ export default async function DashboardPage() {
     eventDate.setHours(0, 0, 0, 0);
     const daysUntilEvent = differenceInDays(eventDate, today);
     const daysUntilReveal = Math.max(0, daysUntilEvent - LOCATION_REVEAL_DAYS);
-    
+
     // Pre-parse location features to avoid JSON.parse on every render
     const locationFeatures = location?.features ? JSON.parse(location.features) : [];
-    
+
     // Pre-filter attendees to avoid filtering on every render
     const otherAttendees = attendees.filter((u: typeof attendees[0]) => u.id !== userId);
-    
+
     // Pre-format date to avoid formatting on every render
     const formattedDate = format(new Date(meetup.date), "EEEE, MMMM d");
-    
+
     // Coffee brewing image for hidden locations
     const COFFEE_BREWING_IMAGE = "https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?q=80&w=1000&auto=format&fit=crop";
 
@@ -110,8 +111,10 @@ export default async function DashboardPage() {
                     {/* Location Card */}
                     <Card className="overflow-hidden border-primary/20 shadow-lg">
                         <div className="relative h-48 w-full bg-muted">
+
+
                             {isRevealed && location ? (
-                                <Image
+                                <CafeImage
                                     src={location.image}
                                     alt={location.name}
                                     fill
@@ -133,8 +136,8 @@ export default async function DashboardPage() {
                                 <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
                             )}
                             <div className="absolute right-4 top-4 rounded-full bg-background/90 px-3 py-1 text-xs font-medium backdrop-blur">
-                                {isRevealed 
-                                    ? "Location Revealed" 
+                                {isRevealed
+                                    ? "Location Revealed"
                                     : daysUntilReveal > 0
                                         ? `Reveals in ${daysUntilReveal} day${daysUntilReveal !== 1 ? 's' : ''}`
                                         : "Reveals soon"}
@@ -143,14 +146,21 @@ export default async function DashboardPage() {
                         <CardHeader>
                             <CardTitle className="text-2xl">
                                 {isRevealed && location ? (
-                                    <a
-                                        href={(location as any).googleMapsLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${location.name} ${location.location} ${location.city}`)}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="hover:text-primary transition-colors"
-                                    >
-                                        {location.name}
-                                    </a>
+                                    <>
+                                        <a
+                                            href={(location as any).googleMapsLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${location.name} ${location.location} ${location.city}`)}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="hover:text-primary transition-colors"
+                                        >
+                                            {location.name}
+                                        </a>
+                                        {(meetup as any).hasMultipleTables && (
+                                            <span className="ml-2 text-lg text-primary font-bold">
+                                                - {(meetup as any).tableName}
+                                            </span>
+                                        )}
+                                    </>
                                 ) : (
                                     <span className={hasLocation && !isRevealed ? "blur-sm select-none" : ""}>
                                         Mystery Location
@@ -194,7 +204,7 @@ export default async function DashboardPage() {
                             ) : (
                                 <div className="space-y-2">
                                     <p className="text-muted-foreground">
-                                        {hasLocation 
+                                        {hasLocation
                                             ? `We're curating the perfect spot for your group. The location will be revealed ${LOCATION_REVEAL_DAYS} day${LOCATION_REVEAL_DAYS > 1 ? 's' : ''} before the event!`
                                             : "We're curating the perfect spot for your group. Check back soon!"}
                                     </p>
@@ -223,15 +233,15 @@ export default async function DashboardPage() {
                                     const firstName = user.name?.split(" ")[0] || user.name || "Guest";
                                     const userImage = user.avatar || user.image;
                                     const userInitial = firstName[0]?.toUpperCase() || "?";
-                                    
+
                                     return (
                                         <div key={user.id} className="flex items-center gap-4 rounded-lg border p-3 transition-colors hover:bg-secondary/50">
                                             <div className="relative h-12 w-12 overflow-hidden rounded-full bg-muted">
                                                 {userImage ? (
-                                                    <Image 
-                                                        src={userImage} 
-                                                        alt={firstName} 
-                                                        fill 
+                                                    <Image
+                                                        src={userImage}
+                                                        alt={firstName}
+                                                        fill
                                                         className="object-cover"
                                                         sizes="48px"
                                                         loading="lazy"

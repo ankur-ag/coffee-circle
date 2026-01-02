@@ -49,7 +49,7 @@ export function BookingForm({ meetups }: { meetups: Meetup[] }) {
 
         try {
             await bookMeetup(formData);
-            
+
             // Navigate to dashboard on success
             router.push("/dashboard");
         } catch (err: any) {
@@ -109,8 +109,8 @@ export function BookingForm({ meetups }: { meetups: Meetup[] }) {
                                     full && !canSelect
                                         ? "opacity-60 cursor-not-allowed"
                                         : "cursor-pointer hover:border-primary hover:shadow-md",
-                                    selectedMeetupId === meetup.id 
-                                        ? "border-primary border-2 ring-2 ring-primary ring-offset-2 bg-primary/5 shadow-lg scale-[1.02]" 
+                                    selectedMeetupId === meetup.id
+                                        ? "border-primary border-2 ring-2 ring-primary ring-offset-2 bg-primary/5 shadow-lg scale-[1.02]"
                                         : "border"
                                 )}
                                 onClick={() => {
@@ -138,6 +138,11 @@ export function BookingForm({ meetups }: { meetups: Meetup[] }) {
                                     </div>
                                     <CardTitle className="text-lg">
                                         {format(new Date(meetup.date), "MMMM d, yyyy")}
+                                        {(meetup as any).hasMultipleTables && (
+                                            <span className="ml-2 text-primary font-bold">
+                                                - {(meetup as any).tableName}
+                                            </span>
+                                        )}
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent>
