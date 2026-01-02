@@ -93,6 +93,7 @@ export async function updateMeetup(formData: FormData) {
     const locationId = formData.get("locationId") as string;
     const language = formData.get("language") as string;
     const status = formData.get("status") as string;
+    const tableName = formData.get("tableName") as string;
     const capacityStr = formData.get("capacity") as string;
     const capacity = capacityStr ? parseInt(capacityStr, 10) : 6;
 
@@ -112,6 +113,7 @@ export async function updateMeetup(formData: FormData) {
         language,
         status,
         capacity,
+        tableName: tableName || "Table 1",
     }).where(eq(meetups.id, id));
 
     revalidatePath("/admin/events");

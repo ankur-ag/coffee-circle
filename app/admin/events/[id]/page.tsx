@@ -17,6 +17,7 @@ async function getMeetup(id: string) {
             status: meetups.status,
             language: meetups.language,
             capacity: meetups.capacity,
+            tableName: meetups.tableName,
         })
         .from(meetups)
         .where(eq(meetups.id, id))
@@ -128,6 +129,19 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
                         className="w-full border rounded px-3 py-2"
                     />
                     <p className="text-xs text-gray-500 mt-1">Maximum number of attendees</p>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Table Name</label>
+                    <input
+                        type="text"
+                        name="tableName"
+                        defaultValue={(meetup as any).tableName ?? "Table 1"}
+                        placeholder="e.g. Table 1, Table VIP"
+                        required
+                        className="w-full border rounded px-3 py-2"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Identifier for this specific table/group</p>
                 </div>
 
                 <div className="pt-4 flex justify-end gap-2">
