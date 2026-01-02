@@ -20,7 +20,7 @@ async function getMeetups() {
             locationName: coffeeShops.name,
             locationCity: coffeeShops.city,
             tableName: meetups.tableName,
-            attendeeCount: sql<number>`count(${bookings.id})`,
+            attendeeCount: sql<number>`COALESCE(SUM(CASE WHEN ${bookings.status} = 'confirmed' THEN (CASE WHEN ${bookings.hasPlusOne} = 'true' THEN 2 ELSE 1 END) ELSE 0 END), 0)`,
         })
         .from(meetups)
         .leftJoin(coffeeShops, eq(meetups.locationId, coffeeShops.id))
