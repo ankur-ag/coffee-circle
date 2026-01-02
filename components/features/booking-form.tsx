@@ -149,7 +149,7 @@ export function BookingForm({ meetups }: { meetups: Meetup[] }) {
                                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                         <Users className="h-4 w-4" />
                                         <span>
-                                            {attendeeCount} / {capacity} {full ? "(Full)" : "people attending"}
+                                            {full ? "Event Full" : "Spots available"}
                                         </span>
                                     </div>
                                     {full && (
