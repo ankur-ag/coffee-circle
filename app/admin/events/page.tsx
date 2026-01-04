@@ -56,41 +56,41 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
                 </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="bg-card text-card-foreground rounded-lg shadow overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                    <table className="min-w-full divide-y divide-border">
+                        <thead className="bg-muted">
                             <tr>
-                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase">
                                     Date
                                 </th>
-                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase">
                                     Time
                                 </th>
-                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase hidden sm:table-cell">
                                     Location
                                 </th>
-                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase">
                                     Language
                                 </th>
-                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase">
                                     Attendees
                                 </th>
-                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase hidden md:table-cell">
                                     Status
                                 </th>
-                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase">
                                     Actions
                                 </th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-card divide-y divide-border">
                             {filteredMeetups.map((meetup: typeof filteredMeetups[0]) => {
                                 const isExpired = !isMeetupInFuture(meetup);
                                 const displayStatus = isExpired ? "expired" : meetup.status;
 
                                 return (
-                                    <tr key={meetup.id} className={`hover:bg-gray-50 ${isExpired ? "opacity-60" : ""}`}>
+                                    <tr key={meetup.id} className={`hover:bg-muted/50 ${isExpired ? "opacity-60" : ""}`}>
                                         <td className="px-3 sm:px-6 py-4 text-sm">
                                             {meetup.date}
                                         </td>
@@ -99,8 +99,8 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
                                         </td>
                                         <td className="px-3 sm:px-6 py-4 text-sm hidden sm:table-cell">
                                             <div>{meetup.locationName}</div>
-                                            <div className="text-gray-500">{meetup.locationCity}</div>
-                                            <div className="text-xs text-gray-400 mt-1">{meetup.tableName}</div>
+                                            <div className="text-muted-foreground">{meetup.locationCity}</div>
+                                            <div className="text-xs text-muted-foreground/70 mt-1">{meetup.tableName}</div>
                                         </td>
                                         <td className="px-3 sm:px-6 py-4 text-sm">
                                             {meetup.language === "zh" ? "🇨🇳 中文" : "🇬🇧 English"}

@@ -19,7 +19,7 @@ export function UpdateRoleForm({ userId, currentRole }: { userId: string; curren
             <select
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                className="border rounded px-2 py-1 text-sm"
+                className="border border-border rounded px-2 py-1 text-sm"
             >
                 <option value="user">User</option>
                 <option value="admin">Admin</option>

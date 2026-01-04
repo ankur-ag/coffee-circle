@@ -22,7 +22,7 @@ export function AdminSidebar() {
     return (
         <>
             {/* Mobile Menu Button - Fixed below header */}
-            <div className="md:hidden fixed top-16 left-0 right-0 z-40 bg-white border-b shadow-sm">
+            <div className="md:hidden fixed top-16 left-0 right-0 z-40 bg-background border-b border-border border-border shadow-sm">
                 <div className="px-5 py-3">
                     <Button
                         variant="outline"
@@ -66,19 +66,18 @@ export function AdminSidebar() {
 
                     <nav className="space-y-2">
                         {adminLinks.map((link) => {
-                            const isActive = pathname === link.href || 
+                            const isActive = pathname === link.href ||
                                 (link.href !== "/admin" && pathname?.startsWith(link.href));
-                            
+
                             return (
                                 <Link
                                     key={link.href}
                                     href={link.href}
                                     onClick={() => setIsOpen(false)}
-                                    className={`block px-4 py-2 rounded transition ${
-                                        isActive
+                                    className={`block px-4 py-2 rounded transition ${isActive
                                             ? "bg-gray-800 text-white"
                                             : "hover:bg-gray-800 text-gray-300"
-                                    }`}
+                                        }`}
                                 >
                                     {link.label}
                                 </Link>
@@ -87,7 +86,7 @@ export function AdminSidebar() {
                         <Link
                             href="/"
                             onClick={() => setIsOpen(false)}
-                            className="block px-4 py-2 rounded hover:bg-gray-800 transition mt-8 text-gray-400"
+                            className="block px-4 py-2 rounded hover:bg-gray-800 transition mt-8 text-muted-foreground/70"
                         >
                             ← Back to Site
                         </Link>

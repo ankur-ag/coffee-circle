@@ -43,7 +43,7 @@ function renderStars(rating: number) {
                     ★
                 </span>
             ))}
-            <span className="ml-2 text-sm text-gray-600">({rating}/5)</span>
+            <span className="ml-2 text-sm text-muted-foreground">({rating}/5)</span>
         </div>
     );
 }
@@ -68,20 +68,20 @@ export default async function AdminFeedbackPage() {
 
             {/* Statistics */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-white rounded-lg shadow p-4">
-                    <div className="text-sm text-gray-600">Total Feedback</div>
+                <div className="bg-card text-card-foreground rounded-lg shadow p-4">
+                    <div className="text-sm text-muted-foreground">Total Feedback</div>
                     <div className="text-2xl font-bold">{totalFeedback}</div>
                 </div>
-                <div className="bg-white rounded-lg shadow p-4">
-                    <div className="text-sm text-gray-600">Average Rating</div>
+                <div className="bg-card text-card-foreground rounded-lg shadow p-4">
+                    <div className="text-sm text-muted-foreground">Average Rating</div>
                     <div className="text-2xl font-bold">{averageRating}</div>
                 </div>
-                <div className="bg-white rounded-lg shadow p-4">
-                    <div className="text-sm text-gray-600">5 Stars</div>
+                <div className="bg-card text-card-foreground rounded-lg shadow p-4">
+                    <div className="text-sm text-muted-foreground">5 Stars</div>
                     <div className="text-2xl font-bold">{ratingDistribution[0].count}</div>
                 </div>
-                <div className="bg-white rounded-lg shadow p-4">
-                    <div className="text-sm text-gray-600">With Comments</div>
+                <div className="bg-card text-card-foreground rounded-lg shadow p-4">
+                    <div className="text-sm text-muted-foreground">With Comments</div>
                     <div className="text-2xl font-bold">
                         {allFeedback.filter((f: typeof allFeedback[0]) => f.comment).length}
                     </div>
@@ -89,7 +89,7 @@ export default async function AdminFeedbackPage() {
             </div>
 
             {/* Rating Distribution */}
-            <div className="bg-white rounded-lg shadow p-4 mb-6">
+            <div className="bg-card text-card-foreground rounded-lg shadow p-4 mb-6">
                 <h2 className="text-lg font-semibold mb-3">Rating Distribution</h2>
                 <div className="space-y-2">
                     {ratingDistribution.map(({ rating, count }) => (
@@ -103,97 +103,97 @@ export default async function AdminFeedbackPage() {
                                     }}
                                 />
                             </div>
-                            <div className="w-12 text-sm text-gray-600 text-right">{count}</div>
+                            <div className="w-12 text-sm text-muted-foreground/90 text-right">{count}</div>
                         </div>
                     ))}
                 </div>
             </div>
 
             {/* Feedback List */}
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="bg-card text-card-foreground rounded-lg shadow overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                User
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                Rating
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                Comment
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">
-                                Event
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">
-                                Location
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">
-                                Submitted
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {allFeedback.length === 0 ? (
+                    <table className="min-w-full divide-y divide-border">
+                        <thead className="bg-muted">
                             <tr>
-                                <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
-                                    No feedback submitted yet.
-                                </td>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase">
+                                    User
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase">
+                                    Rating
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase">
+                                    Comment
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase hidden md:table-cell">
+                                    Event
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase hidden lg:table-cell">
+                                    Location
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase hidden sm:table-cell">
+                                    Submitted
+                                </th>
                             </tr>
-                        ) : (
-                            allFeedback.map((item: typeof allFeedback[0]) => (
-                                <tr key={item.feedbackId} className="hover:bg-gray-50">
-                                    <td className="px-3 sm:px-6 py-4">
-                                        <div className="text-sm font-medium text-gray-900">
-                                            {item.userName || "Unknown"}
-                                        </div>
-                                        <div className="text-sm text-gray-500 truncate max-w-[150px] sm:max-w-none">{item.userEmail}</div>
-                                    </td>
-                                    <td className="px-3 sm:px-6 py-4">
-                                        {renderStars(item.rating || 0)}
-                                    </td>
-                                    <td className="px-3 sm:px-6 py-4">
-                                        <div className="text-sm text-gray-900 max-w-xs sm:max-w-md">
-                                            {item.comment ? (
-                                                <p className="whitespace-pre-wrap line-clamp-3">{item.comment}</p>
-                                            ) : (
-                                                <span className="text-gray-400 italic">No comment</span>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td className="px-3 sm:px-6 py-4 text-sm hidden md:table-cell">
-                                        <div>{item.meetupDate || "N/A"}</div>
-                                        <div className="text-gray-500">{item.meetupTime || "N/A"}</div>
-                                    </td>
-                                    <td className="px-3 sm:px-6 py-4 text-sm hidden lg:table-cell">
-                                        {item.locationName ? (
-                                            <>
-                                                <div>{item.locationName}</div>
-                                                {item.locationCity && (
-                                                    <div className="text-gray-500">{item.locationCity}</div>
-                                                )}
-                                            </>
-                                        ) : (
-                                            <span className="text-gray-400">N/A</span>
-                                        )}
-                                    </td>
-                                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 hidden sm:table-cell">
-                                        {item.feedbackCreatedAt
-                                            ? new Date(item.feedbackCreatedAt).toLocaleDateString("en-US", {
-                                                  year: "numeric",
-                                                  month: "short",
-                                                  day: "numeric",
-                                                  hour: "2-digit",
-                                                  minute: "2-digit",
-                                              })
-                                            : "-"}
+                        </thead>
+                        <tbody className="bg-card text-card-foreground divide-y divide-border">
+                            {allFeedback.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-4 text-center text-muted-foreground">
+                                        No feedback submitted yet.
                                     </td>
                                 </tr>
-                            ))
-                        )}
-                    </tbody>
+                            ) : (
+                                allFeedback.map((item: typeof allFeedback[0]) => (
+                                    <tr key={item.feedbackId} className="hover:bg-muted">
+                                        <td className="px-3 sm:px-6 py-4">
+                                            <div className="text-sm font-medium text-foreground">
+                                                {item.userName || "Unknown"}
+                                            </div>
+                                            <div className="text-sm text-muted-foreground truncate max-w-[150px] sm:max-w-none">{item.userEmail}</div>
+                                        </td>
+                                        <td className="px-3 sm:px-6 py-4">
+                                            {renderStars(item.rating || 0)}
+                                        </td>
+                                        <td className="px-3 sm:px-6 py-4">
+                                            <div className="text-sm text-foreground max-w-xs sm:max-w-md">
+                                                {item.comment ? (
+                                                    <p className="whitespace-pre-wrap line-clamp-3">{item.comment}</p>
+                                                ) : (
+                                                    <span className="text-muted-foreground/70 italic">No comment</span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-3 sm:px-6 py-4 text-sm hidden md:table-cell">
+                                            <div>{item.meetupDate || "N/A"}</div>
+                                            <div className="text-muted-foreground/80">{item.meetupTime || "N/A"}</div>
+                                        </td>
+                                        <td className="px-3 sm:px-6 py-4 text-sm hidden lg:table-cell">
+                                            {item.locationName ? (
+                                                <>
+                                                    <div>{item.locationName}</div>
+                                                    {item.locationCity && (
+                                                        <div className="text-muted-foreground/80">{item.locationCity}</div>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <span className="text-muted-foreground/70">N/A</span>
+                                            )}
+                                        </td>
+                                        <td className="px-3 sm:px-6 py-4 text-sm text-muted-foreground hidden sm:table-cell">
+                                            {item.feedbackCreatedAt
+                                                ? new Date(item.feedbackCreatedAt).toLocaleDateString("en-US", {
+                                                    year: "numeric",
+                                                    month: "short",
+                                                    day: "numeric",
+                                                    hour: "2-digit",
+                                                    minute: "2-digit",
+                                                })
+                                                : "-"}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
                     </table>
                 </div>
             </div>

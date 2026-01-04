@@ -45,54 +45,54 @@ export default async function AdminLocationsPage() {
                 </Link>
             </div>
 
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="bg-card text-card-foreground rounded-lg shadow overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                Name
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                City
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">
-                                Location
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                Rating
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                Actions
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {locations.map((location: typeof locations[0]) => (
-                            <tr key={location.id} className="hover:bg-gray-50">
-                                <td className="px-3 sm:px-6 py-4 text-sm font-medium">
-                                    {location.name}
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 text-sm">
-                                    {location.city}
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 text-sm hidden sm:table-cell">
-                                    {location.location}
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 text-sm">
-                                    {(location.rating / 10).toFixed(1)} ⭐
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 text-sm">
-                                    <Link
-                                        href={`/admin/locations/${location.id}`}
-                                        className="text-primary hover:underline"
-                                    >
-                                        Edit
-                                    </Link>
-                                </td>
+                    <table className="min-w-full divide-y divide-border">
+                        <thead className="bg-muted">
+                            <tr>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase">
+                                    Name
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase">
+                                    City
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase hidden sm:table-cell">
+                                    Location
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase">
+                                    Rating
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase">
+                                    Actions
+                                </th>
                             </tr>
-                        ))}
-                    </tbody>
+                        </thead>
+                        <tbody className="bg-card divide-y divide-border">
+                            {locations.map((location: typeof locations[0]) => (
+                                <tr key={location.id} className="hover:bg-muted/50">
+                                    <td className="px-3 sm:px-6 py-4 text-sm text-muted-foreground">
+                                        {location.name}
+                                    </td>
+                                    <td className="px-3 sm:px-6 py-4 text-sm">
+                                        {location.city}
+                                    </td>
+                                    <td className="px-3 sm:px-6 py-4 text-sm hidden sm:table-cell">
+                                        {location.location}
+                                    </td>
+                                    <td className="px-3 sm:px-6 py-4 text-sm">
+                                        {(location.rating / 10).toFixed(1)} ⭐
+                                    </td>
+                                    <td className="px-3 sm:px-6 py-4 text-sm">
+                                        <Link
+                                            href={`/admin/locations/${location.id}`}
+                                            className="text-primary hover:underline"
+                                        >
+                                            Edit
+                                        </Link>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
                     </table>
                 </div>
             </div>

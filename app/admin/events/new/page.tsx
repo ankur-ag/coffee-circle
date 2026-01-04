@@ -16,33 +16,33 @@ export default async function NewEventPage() {
         <div className="max-w-2xl mx-auto">
             <h1 className="text-2xl font-bold mb-6">Create New Event</h1>
 
-            <form action={createMeetup} className="bg-white p-4 sm:p-6 rounded-lg shadow space-y-4">
+            <form action={createMeetup} className="bg-card text-card-foreground p-4 sm:p-6 rounded-lg shadow space-y-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">Date</label>
                     <input
                         type="date"
                         name="date"
                         required
-                        className="w-full border rounded px-3 py-2"
+                        className="w-full border border-border border-border border-border rounded px-3 py-2 bg-background text-foreground"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">Time</label>
                     <input
                         type="time"
                         name="time"
                         required
-                        className="w-full border rounded px-3 py-2"
+                        className="w-full border border-border rounded px-3 py-2"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">Location</label>
                     <select
                         name="locationId"
                         required
-                        className="w-full border rounded px-3 py-2"
+                        className="w-full border border-border rounded px-3 py-2"
                     >
                         <option value="">Select a location</option>
                         {locations.map((loc: typeof locations[0]) => (
@@ -54,12 +54,12 @@ export default async function NewEventPage() {
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Language</label>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">Language</label>
                     <select
                         name="language"
                         defaultValue="en"
                         required
-                        className="w-full border rounded px-3 py-2"
+                        className="w-full border border-border rounded px-3 py-2"
                     >
                         <option value="en">English</option>
                         <option value="zh">Chinese</option>
@@ -67,22 +67,22 @@ export default async function NewEventPage() {
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Capacity</label>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">Capacity</label>
                     <input
                         type="number"
                         name="capacity"
                         min="1"
                         defaultValue="6"
                         required
-                        className="w-full border rounded px-3 py-2"
+                        className="w-full border border-border rounded px-3 py-2"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Maximum number of attendees (default: 6)</p>
+                    <p className="text-xs text-muted-foreground/80 mt-1">Maximum number of attendees (default: 6)</p>
                 </div>
 
                 <div className="pt-4 flex justify-end gap-2">
                     <a
                         href="/admin/events"
-                        className="px-4 py-2 border rounded text-gray-600 hover:bg-gray-50"
+                        className="px-4 py-2 border border-border rounded text-muted-foreground/90 hover:bg-muted"
                     >
                         Cancel
                     </a>

@@ -30,7 +30,7 @@ export function ShowPastToggle() {
                 onChange={handleToggle}
                 className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
             />
-            <span className="text-sm font-medium text-gray-700">
+            <span className="text-sm font-medium text-muted-foreground">
                 Show past events
             </span>
         </label>

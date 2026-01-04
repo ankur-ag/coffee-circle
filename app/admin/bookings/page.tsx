@@ -71,47 +71,47 @@ export default async function AdminBookingsPage({ searchParams }: { searchParams
                 </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="bg-card text-card-foreground rounded-lg shadow overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                    <table className="min-w-full divide-y divide-border">
+                        <thead className="bg-muted">
                             <tr>
-                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase">
                                     User
                                 </th>
-                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase">
                                     Event
                                 </th>
-                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase">
                                     Table
                                 </th>
-                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase">
                                     +1
                                 </th>
-                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase hidden sm:table-cell">
                                     Location
                                 </th>
-                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase">
                                     Status
                                 </th>
-                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase hidden md:table-cell">
                                     Booked At
                                 </th>
-                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground/80 uppercase">
                                     Actions
                                 </th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-card divide-y divide-border">
                             {allBookings.map((booking: typeof allBookings[0]) => (
-                                <tr key={booking.id} className="hover:bg-gray-50">
+                                <tr key={booking.id} className="hover:bg-muted/50">
                                     <td className="px-3 sm:px-6 py-4">
-                                        <div className="text-sm font-medium text-gray-900">{booking.userName}</div>
-                                        <div className="text-sm text-gray-500 truncate max-w-[150px] sm:max-w-none">{booking.userEmail}</div>
+                                        <div className="text-sm font-medium text-foreground">{booking.userName}</div>
+                                        <div className="text-sm text-muted-foreground truncate max-w-[150px] sm:max-w-none">{booking.userEmail}</div>
                                     </td>
                                     <td className="px-3 sm:px-6 py-4 text-sm">
                                         <div>{booking.meetupDate}</div>
-                                        <div className="text-gray-500">{booking.meetupTime}</div>
+                                        <div className="text-muted-foreground">{booking.meetupTime}</div>
                                     </td>
                                     <td className="px-3 sm:px-6 py-4 text-sm">
                                         <div className="font-medium">{booking.tableName}</div>
@@ -120,12 +120,12 @@ export default async function AdminBookingsPage({ searchParams }: { searchParams
                                         {booking.hasPlusOne === "true" ? (
                                             <span className="text-blue-600 font-bold px-2 py-0.5 bg-blue-50 rounded-full text-xs">Yes</span>
                                         ) : (
-                                            <span className="text-gray-400 text-xs">No</span>
+                                            <span className="text-muted-foreground/70 text-xs">No</span>
                                         )}
                                     </td>
                                     <td className="px-3 sm:px-6 py-4 text-sm hidden sm:table-cell">
                                         <div>{booking.locationName}</div>
-                                        <div className="text-gray-500">{booking.locationCity}</div>
+                                        <div className="text-muted-foreground">{booking.locationCity}</div>
                                     </td>
                                     <td className="px-3 sm:px-6 py-4 text-sm">
                                         <span
@@ -137,7 +137,7 @@ export default async function AdminBookingsPage({ searchParams }: { searchParams
                                             {booking.status}
                                         </span>
                                     </td>
-                                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 hidden md:table-cell">
+                                    <td className="px-3 sm:px-6 py-4 text-sm text-muted-foreground hidden md:table-cell">
                                         {booking.createdAt ? new Date(booking.createdAt).toLocaleDateString() : "-"}
                                     </td>
                                     <td className="px-3 sm:px-6 py-4 text-sm">
