@@ -11,27 +11,41 @@ describe("hasActiveBooking", () => {
     let mockSelect: any;
     let mockFrom: any;
     let mockWhere: any;
+    let mockInnerJoin: any;
+    let mockLimit: any;
     let mockDb: any;
 
     beforeEach(() => {
         vi.clearAllMocks();
-        
+
         // Create a chainable mock for the query builder
-        // The chain is: db.select().from(table).where(condition) -> returns array
-        mockWhere = vi.fn();
-        mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
+        mockLimit = vi.fn();
+        mockWhere = vi.fn().mockImplementation(() => {
+            const result: any = Promise.resolve([]);
+            result.limit = mockLimit;
+            return result;
+        });
+        mockInnerJoin = vi.fn().mockImplementation(() => {
+            return { where: mockWhere };
+        });
+        mockFrom = vi.fn().mockImplementation(() => {
+            return {
+                innerJoin: mockInnerJoin,
+                where: mockWhere
+            };
+        });
         mockSelect = vi.fn().mockReturnValue({ from: mockFrom });
-        
+
         mockDb = {
             select: mockSelect,
         };
-        
+
         (getDb as any).mockReturnValue(mockDb);
     });
 
     it("should return false when user has no bookings", async () => {
-        // Mock: no confirmed bookings
-        mockWhere.mockResolvedValueOnce([]);
+        // Mock: no active bookings found in the joined query
+        mockLimit.mockResolvedValueOnce([]);
 
         const result = await hasActiveBooking("user-123");
         expect(result).toBe(false);
@@ -70,17 +84,15 @@ describe("hasActiveBooking", () => {
             },
         ];
 
-        // First call: get confirmed bookings
-        mockWhere.mockResolvedValueOnce(confirmedBookings);
-        // Second call: get meetups
-        mockWhere.mockResolvedValueOnce(meetups);
+        // Mock: the single query returns no results if event is cancelled
+        // because of ne(meetups.status, 'cancelled') in SQL
+        mockLimit.mockResolvedValueOnce([]);
 
         const result = await hasActiveBooking(userId);
-        
+
         // Should return false because event is cancelled
-        // This means user can book a new event
         expect(result).toBe(false);
-        expect(mockSelect).toHaveBeenCalledTimes(2);
+        expect(mockSelect).toHaveBeenCalledTimes(1);
     });
 
     it("should return true when user has booking for active future event", async () => {
@@ -109,16 +121,14 @@ describe("hasActiveBooking", () => {
             },
         ];
 
-        // First call: get confirmed bookings
-        mockWhere.mockResolvedValueOnce(confirmedBookings);
-        // Second call: get meetups
-        mockWhere.mockResolvedValueOnce(meetups);
+        // Mock: single record found for active future event
+        mockLimit.mockResolvedValueOnce([{ id: "booking-123" }]);
 
         const result = await hasActiveBooking(userId);
-        
-        // Should return true because event is active and in future
+
+        // Should return true because active booking exists
         expect(result).toBe(true);
-        expect(mockSelect).toHaveBeenCalledTimes(2);
+        expect(mockSelect).toHaveBeenCalledTimes(1);
     });
 
     it("should return false when user has booking for past event", async () => {
@@ -147,16 +157,15 @@ describe("hasActiveBooking", () => {
             },
         ];
 
-        // First call: get confirmed bookings
-        mockWhere.mockResolvedValueOnce(confirmedBookings);
-        // Second call: get meetups
-        mockWhere.mockResolvedValueOnce(meetups);
+        // Mock: no results if event is in the past
+        // because of gte(meetups.date, todayStr) in SQL
+        mockLimit.mockResolvedValueOnce([]);
 
         const result = await hasActiveBooking(userId);
-        
+
         // Should return false because event is in the past
         expect(result).toBe(false);
-        expect(mockSelect).toHaveBeenCalledTimes(2);
+        expect(mockSelect).toHaveBeenCalledTimes(1);
     });
 });
 
@@ -361,13 +370,30 @@ describe("hasActiveBooking - Edge Cases", () => {
     let mockSelect: any;
     let mockFrom: any;
     let mockWhere: any;
+    let mockInnerJoin: any;
+    let mockLimit: any;
     let mockDb: any;
 
     beforeEach(() => {
         vi.clearAllMocks();
-        mockWhere = vi.fn();
-        mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
+
+        mockLimit = vi.fn();
+        mockWhere = vi.fn().mockImplementation(() => {
+            const result: any = Promise.resolve([]);
+            result.limit = mockLimit;
+            return result;
+        });
+        mockInnerJoin = vi.fn().mockImplementation(() => {
+            return { where: mockWhere };
+        });
+        mockFrom = vi.fn().mockImplementation(() => {
+            return {
+                innerJoin: mockInnerJoin,
+                where: mockWhere
+            };
+        });
         mockSelect = vi.fn().mockReturnValue({ from: mockFrom });
+
         mockDb = { select: mockSelect };
         (getDb as any).mockReturnValue(mockDb);
     });
@@ -385,8 +411,8 @@ describe("hasActiveBooking - Edge Cases", () => {
         const confirmedBookings = [{ id: "booking-123", userId, meetupId, status: "confirmed" }];
         const meetups = [{ id: meetupId, date: todayStr, status: "open" }];
 
-        mockWhere.mockResolvedValueOnce(confirmedBookings);
-        mockWhere.mockResolvedValueOnce(meetups);
+        // Mock: single query returns result if today's event is active
+        mockLimit.mockResolvedValueOnce([{ id: "booking-123" }]);
 
         const result = await hasActiveBooking(userId);
         expect(result).toBe(true); // Today is considered "in the future"
@@ -414,8 +440,8 @@ describe("hasActiveBooking - Edge Cases", () => {
             { id: "meetup-2", date: pastDateStr, status: "open" },
         ];
 
-        mockWhere.mockResolvedValueOnce(confirmedBookings);
-        mockWhere.mockResolvedValueOnce(meetups);
+        // Mock: returns the active booking
+        mockLimit.mockResolvedValueOnce([{ id: "booking-1" }]);
 
         const result = await hasActiveBooking(userId);
         expect(result).toBe(true); // Has at least one active booking
@@ -438,8 +464,8 @@ describe("hasActiveBooking - Edge Cases", () => {
             { id: "meetup-2", date: futureDateStr, status: "cancelled" },
         ];
 
-        mockWhere.mockResolvedValueOnce(confirmedBookings);
-        mockWhere.mockResolvedValueOnce(meetups);
+        // Mock: empty if all cancelled
+        mockLimit.mockResolvedValueOnce([]);
 
         const result = await hasActiveBooking(userId);
         expect(result).toBe(false); // All events are cancelled
@@ -456,8 +482,8 @@ describe("hasActiveBooking - Edge Cases", () => {
         // Meetup doesn't exist in database
         const meetups: any[] = [];
 
-        mockWhere.mockResolvedValueOnce(confirmedBookings);
-        mockWhere.mockResolvedValueOnce(meetups);
+        // Mock: empty if meetup doesn't exist (due to inner join)
+        mockLimit.mockResolvedValueOnce([]);
 
         const result = await hasActiveBooking(userId);
         expect(result).toBe(false); // Meetup not found
@@ -476,8 +502,8 @@ describe("hasActiveBooking - Edge Cases", () => {
             { id: "meetup-999", date: "2025-12-31", status: "open" },
         ];
 
-        mockWhere.mockResolvedValueOnce(confirmedBookings);
-        mockWhere.mockResolvedValueOnce(meetups);
+        // Mock: empty due to join fail
+        mockLimit.mockResolvedValueOnce([]);
 
         const result = await hasActiveBooking(userId);
         expect(result).toBe(false); // Meetup ID doesn't match
@@ -495,9 +521,7 @@ describe("hasActiveBooking - Edge Cases", () => {
             { id: "booking-124", userId, meetupId: undefined, status: "confirmed" },
         ];
 
-        mockWhere.mockResolvedValueOnce(confirmedBookings);
-        // inArray with null/undefined values will return empty array
-        mockWhere.mockResolvedValueOnce([]);
+        mockLimit.mockResolvedValueOnce([]);
 
         const result = await hasActiveBooking(userId);
         expect(result).toBe(false); // No valid meetups found
@@ -520,8 +544,8 @@ describe("hasActiveBooking - Edge Cases", () => {
             { id: "meetup-2", date: futureDateStr, status: "open" },
         ];
 
-        mockWhere.mockResolvedValueOnce(confirmedBookings);
-        mockWhere.mockResolvedValueOnce(meetups);
+        // Mock: returns the active one
+        mockLimit.mockResolvedValueOnce([{ id: "booking-2" }]);
 
         const result = await hasActiveBooking(userId);
         expect(result).toBe(true); // Has at least one active booking
@@ -543,8 +567,7 @@ describe("hasActiveBooking - Edge Cases", () => {
             { id: meetupId, date: futureDateStr, status: "full" },
         ];
 
-        mockWhere.mockResolvedValueOnce(confirmedBookings);
-        mockWhere.mockResolvedValueOnce(meetups);
+        mockLimit.mockResolvedValueOnce([{ id: "booking-123" }]);
 
         const result = await hasActiveBooking(userId);
         expect(result).toBe(true); // "full" is not "cancelled", so booking is still active
@@ -566,8 +589,7 @@ describe("hasActiveBooking - Edge Cases", () => {
             { id: meetupId, date: futureDateStr, status: "past" },
         ];
 
-        mockWhere.mockResolvedValueOnce(confirmedBookings);
-        mockWhere.mockResolvedValueOnce(meetups);
+        mockLimit.mockResolvedValueOnce([{ id: "booking-123" }]);
 
         const result = await hasActiveBooking(userId);
         // Should return true because we check date, not status "past"
@@ -640,19 +662,19 @@ describe("getPastBookings - Feedback Scenarios", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        
+
         // Mock db.select().from().where() chain (Edge Runtime compatible)
         // getPastBookings makes 3 parallel queries:
         // 1. db.select().from(bookings).where(...) -> needs where()
         // 2. db.select().from(meetups) -> returns promise directly
         // 3. db.select().from(coffeeShops) -> returns promise directly
         mockWhere = vi.fn();
-        
+
         // Create separate mocks for each table
         mockFromBookings = vi.fn().mockReturnValue({ where: mockWhere });
         mockFromMeetups = vi.fn();
         mockFromLocations = vi.fn();
-        
+
         // mockFrom will return different mocks based on the table
         let callCount = 0;
         const mockFrom = vi.fn().mockImplementation(() => {
@@ -661,13 +683,13 @@ describe("getPastBookings - Feedback Scenarios", () => {
             if (callCount === 2) return mockFromMeetups(); // meetups
             return mockFromLocations(); // locations
         });
-        
+
         mockSelect = vi.fn().mockReturnValue({ from: mockFrom });
-        
+
         mockDb = {
             select: mockSelect,
         };
-        
+
         (getDb as any).mockReturnValue(mockDb);
     });
 
@@ -841,23 +863,23 @@ describe("getUnratedPastBooking - Feedback Loop Prevention", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        
+
         // Mock db.select().from().where() for getPastBookings (3 queries in parallel)
         // Mock db.select().from().where() for getUnratedPastBooking's feedback query
         mockWhere = vi.fn();
         mockLimit = vi.fn();
-        
+
         // For getPastBookings: bookings (with where), meetups (no where), locations (no where)
         mockFromBookings = vi.fn().mockReturnValue({ where: mockWhere });
         mockFromMeetups = vi.fn();
         mockFromLocations = vi.fn();
-        
+
         // For getUnratedPastBooking's feedback query: feedback (with where, no limit needed)
         // getUnratedPastBooking uses: db.select().from(feedback).where(inArray(...))
         // This returns an array directly, not a limit chain
         // We'll use mockWhere for this too, but it will be the 4th call
         mockFromFeedback = vi.fn().mockReturnValue({ where: mockWhere });
-        
+
         // mockFrom will return different mocks based on the table
         // getPastBookings makes 3 calls, then getUnratedPastBooking makes 1 more
         let callCount = 0;
@@ -868,13 +890,13 @@ describe("getUnratedPastBooking - Feedback Loop Prevention", () => {
             if (callCount === 3) return mockFromLocations(); // locations (getPastBookings)
             return mockFromFeedback(); // feedback (getUnratedPastBooking)
         });
-        
+
         mockSelect = vi.fn().mockReturnValue({ from: mockFrom });
-        
+
         mockDb = {
             select: mockSelect,
         };
-        
+
         (getDb as any).mockReturnValue(mockDb);
     });
 
