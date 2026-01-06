@@ -95,7 +95,7 @@ export default async function AdminFeedbackPage() {
                     {ratingDistribution.map(({ rating, count }) => (
                         <div key={rating} className="flex items-center gap-3">
                             <div className="w-12 text-sm font-medium">{rating} ★</div>
-                            <div className="flex-1 bg-gray-200 rounded-full h-4 relative">
+                            <div className="flex-1 bg-muted rounded-full h-4 relative">
                                 <div
                                     className="bg-yellow-400 h-4 rounded-full"
                                     style={{

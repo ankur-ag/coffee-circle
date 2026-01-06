@@ -2,6 +2,7 @@ import { getDb } from "@/lib/db";
 import { bookings, users, meetups, coffeeShops } from "@/lib/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { CancelBookingButton } from "./cancel-button";
+import { RemovePlusOneButton } from "./remove-plus-one-button";
 import { LocationFilter } from "./location-filter";
 import { DateFilter } from "./date-filter";
 
@@ -117,11 +118,16 @@ export default async function AdminBookingsPage({ searchParams }: { searchParams
                                         <div className="font-medium">{booking.tableName}</div>
                                     </td>
                                     <td className="px-3 sm:px-6 py-4 text-sm text-center">
-                                        {booking.hasPlusOne === "true" ? (
-                                            <span className="text-blue-600 font-bold px-2 py-0.5 bg-blue-50 rounded-full text-xs">Yes</span>
-                                        ) : (
-                                            <span className="text-muted-foreground/70 text-xs">No</span>
-                                        )}
+                                        <div className="flex items-center justify-center">
+                                            {booking.hasPlusOne === "true" ? (
+                                                <>
+                                                    <span className="text-blue-600 font-bold px-2 py-0.5 bg-blue-50 rounded-full text-xs">Yes</span>
+                                                    <RemovePlusOneButton bookingId={booking.id} />
+                                                </>
+                                            ) : (
+                                                <span className="text-muted-foreground/70 text-xs">No</span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-3 sm:px-6 py-4 text-sm hidden sm:table-cell">
                                         <div>{booking.locationName}</div>

@@ -4,6 +4,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { Header } from "@/components/layout/header";
 import { AuthProvider } from "@/components/auth-provider";
+import { WebviewGuard } from "@/components/features/webview-guard";
 
 export const runtime = "edge";
 
@@ -30,6 +31,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <AuthProvider>
+          <WebviewGuard />
           <Header />
           {children}
         </AuthProvider>

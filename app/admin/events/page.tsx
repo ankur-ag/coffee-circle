@@ -114,7 +114,7 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
                                                     ? "bg-red-100 text-red-800"
                                                     : meetup.status === "open"
                                                         ? "bg-green-100 text-green-800"
-                                                        : "bg-gray-100 text-gray-800"
+                                                        : "bg-secondary text-secondary-foreground text-foreground"
                                                     }`}
                                             >
                                                 {displayStatus}

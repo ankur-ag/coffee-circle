@@ -210,8 +210,9 @@ export async function bookMeetup(formData: FormData) {
             console.error("Failed to send booking confirmation email:", emailError);
         }
 
-        revalidatePath("/dashboard");
-        revalidatePath("/book");
+        revalidatePath("/dashboard", "page");
+        revalidatePath("/book", "page");
+        revalidatePath("/", "layout");
 
         return { success: true, bookingId };
     } catch (error) {
@@ -372,9 +373,9 @@ export async function cancelBooking(bookingId: string) {
         throw new Error(`Failed to cancel booking: ${error instanceof Error ? error.message : String(error)}`);
     }
 
-    revalidatePath("/");
-    revalidatePath("/dashboard");
-    revalidatePath("/book"); // Revalidate to update capacity display
+    revalidatePath("/", "layout");
+    revalidatePath("/dashboard", "page");
+    revalidatePath("/book", "page");
     redirect("/dashboard");
 }
 

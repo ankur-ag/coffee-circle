@@ -76,7 +76,9 @@ export async function createMeetup(formData: FormData) {
         tableName,
     });
 
-    revalidatePath("/admin/events");
+    revalidatePath("/admin/events", "page");
+    revalidatePath("/book", "page");
+    revalidatePath("/", "layout");
     redirect("/admin/events");
 }
 
@@ -116,8 +118,9 @@ export async function updateMeetup(formData: FormData) {
         tableName: tableName || "Table 1",
     }).where(eq(meetups.id, id));
 
-    revalidatePath("/admin/events");
-    revalidatePath("/book");
+    revalidatePath("/admin/events", "page");
+    revalidatePath("/book", "page");
+    revalidatePath("/", "layout");
     redirect("/admin/events");
 }
 
@@ -283,6 +286,31 @@ export async function cancelBookingAdmin(bookingId: string) {
         }
     }
 
-    revalidatePath("/admin/bookings");
-    revalidatePath("/book"); // Revalidate to update capacity display
+    revalidatePath("/admin/bookings", "page");
+    revalidatePath("/book", "page");
+    revalidatePath("/", "layout");
+}
+
+export async function removePlusOneAdmin(bookingId: string) {
+    const session = await auth();
+
+    if (!session?.user || session.user.role !== "admin") {
+        throw new Error("Unauthorized");
+    }
+
+    const db = getDb();
+
+    // Update the booking to remove the plus-one
+    await db
+        .update(bookings)
+        .set({ hasPlusOne: "false" })
+        .where(eq(bookings.id, bookingId));
+
+    console.log(`Plus-one removed from booking ${bookingId} by admin`);
+
+    // Revalidate relevant paths to update UI across the app
+    revalidatePath("/admin/bookings", "page");
+    revalidatePath("/admin/events", "page");
+    revalidatePath("/book", "page");
+    revalidatePath("/", "layout");
 }

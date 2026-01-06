@@ -23,8 +23,11 @@ export default async function BookPage() {
         );
     }
 
-    // Check if user already has an active booking
-    const hasActive = await hasActiveBooking(session.user.id);
+    // Check for active booking and fetch meetups in parallel to save time
+    const [hasActive, meetups] = await Promise.all([
+        hasActiveBooking(session.user.id),
+        getUpcomingMeetups()
+    ]);
 
     if (hasActive) {
         return (
@@ -50,8 +53,6 @@ export default async function BookPage() {
             </main>
         );
     }
-
-    const meetups = await getUpcomingMeetups();
 
     return (
         <main className="container mx-auto max-w-3xl px-5 py-12 md:px-6">

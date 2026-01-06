@@ -50,7 +50,7 @@ export default async function AdminUsersPage() {
                                         <span
                                             className={`px-2 py-1 rounded text-xs ${user.role === "admin"
                                                 ? "bg-purple-100 text-purple-800"
-                                                : "bg-gray-100 text-gray-800"
+                                                : "bg-secondary text-secondary-foreground text-foreground"
                                                 }`}
                                         >
                                             {user.role || "user"}

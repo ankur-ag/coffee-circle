@@ -1,7 +1,8 @@
 import { getDb } from "@/lib/db";
 import { bookings, meetups, coffeeShops, users, feedback } from "@/lib/schema";
-import { eq, desc, and, inArray } from "drizzle-orm";
+import { eq, desc, and, inArray, gte, ne, asc } from "drizzle-orm";
 import { REMINDER_EMAIL_DAYS } from "@/lib/config";
+import { unstable_cache } from "next/cache";
 
 /**
  * Check if a meetup is in the future (not past)
@@ -40,45 +41,22 @@ export function isBookingActive(booking: any): boolean {
  */
 export async function hasActiveBooking(userId: string): Promise<boolean> {
     const db = getDb();
+    const todayStr = new Date().toISOString().split("T")[0];
 
-    // Get all confirmed bookings for the user (Edge Runtime compatible)
-    const confirmedBookings = await db
-        .select()
+    // Optimized: Single join query instead of multiple sequential ones
+    const activeBookings = await db
+        .select({ id: bookings.id })
         .from(bookings)
+        .innerJoin(meetups, eq(bookings.meetupId, meetups.id))
         .where(and(
             eq(bookings.userId, userId),
-            eq(bookings.status, "confirmed")
-        )) as any[];
+            eq(bookings.status, "confirmed"),
+            gte(meetups.date, todayStr),
+            ne(meetups.status, "cancelled")
+        ))
+        .limit(1);
 
-    if (confirmedBookings.length === 0) {
-        return false;
-    }
-
-    // Get meetups for these bookings to check if they're in the future and not cancelled
-    const meetupIds = confirmedBookings.map((b: any) => b.meetupId);
-
-    if (meetupIds.length === 0) {
-        return false;
-    }
-
-    const meetupsResult = await db
-        .select()
-        .from(meetups)
-        .where(inArray(meetups.id, meetupIds)) as any[];
-
-    // Check if any booking is for a future meetup that is not cancelled
-    for (const booking of confirmedBookings) {
-        const meetup = meetupsResult.find((m: any) => m.id === booking.meetupId);
-        // A booking is only active if:
-        // 1. The meetup exists
-        // 2. The meetup is in the future (by date)
-        // 3. The meetup is not cancelled
-        if (meetup && isMeetupInFuture(meetup) && meetup.status !== "cancelled") {
-            return true;
-        }
-    }
-
-    return false;
+    return activeBookings.length > 0;
 }
 
 export async function getUserBooking(userId: string) {
@@ -161,79 +139,74 @@ export async function getUserBooking(userId: string) {
     };
 }
 
-export async function getUpcomingMeetups() {
-    const db = getDb();
+export const getUpcomingMeetups = unstable_cache(
+    async () => {
+        const db = getDb();
+        const todayStr = new Date().toISOString().split("T")[0];
 
-    // Get all open meetups using standard select (Edge Runtime compatible)
-    const allMeetups = await db
-        .select()
-        .from(meetups)
-        .where(eq(meetups.status, "open")) as any[];
+        // 1. Get the 2 most recent upcoming meetups in a single query
+        const upcomingMeetups = await db
+            .select()
+            .from(meetups)
+            .where(and(
+                eq(meetups.status, "open"),
+                gte(meetups.date, todayStr)
+            ))
+            .orderBy(asc(meetups.date))
+            .limit(2);
 
-    // Filter to only include future meetups
-    const futureMeetups = allMeetups.filter((meetup: any) => isMeetupInFuture(meetup));
+        if (upcomingMeetups.length === 0) return [];
 
-    // Sort by date (ascending - earliest first) and take only the 2 most recent
-    const sortedMeetups = futureMeetups.sort((a: any, b: any) => {
-        const dateA = new Date(a.date).getTime();
-        const dateB = new Date(b.date).getTime();
-        return dateA - dateB; // Sort ascending (earliest first)
-    });
+        const meetupIds = upcomingMeetups.map((m: any) => m.id);
 
-    const twoMostRecent = sortedMeetups.slice(0, 2);
+        // 2. Batch fetch ALL confirmed bookings for these meetups in one go
+        const confirmedBookings = await db
+            .select()
+            .from(bookings)
+            .where(and(
+                inArray(bookings.meetupId, meetupIds),
+                eq(bookings.status, "confirmed")
+            )) as any[];
 
-    // For each meetup, count confirmed attendees (including +1s)
-    const meetupsWithAttendees = await Promise.all(
-        twoMostRecent.map(async (meetup: any) => {
-            // Use standard select instead of query API for Edge Runtime compatibility
-            const confirmedBookings = await db
-                .select()
-                .from(bookings)
-                .where(and(
-                    eq(bookings.meetupId, meetup.id),
-                    eq(bookings.status, "confirmed")
-                )) as any[];
+        // 3. Process the results in memory
+        const meetupsWithAttendees = upcomingMeetups.map((meetup: any) => {
+            const meetupBookings = confirmedBookings.filter((b: any) => b.meetupId === meetup.id);
 
-            // Count total attendees: each booking counts as 1, +1 bookings count as 2
-            // Note: Cancelled bookings are automatically excluded since we only query confirmed bookings
-            // When a booking with +1 is cancelled, it reduces the headcount by 2 automatically
-            const totalAttendees = confirmedBookings.reduce((count: number, booking: any) => {
+            const totalAttendees = meetupBookings.reduce((count: number, booking: any) => {
                 const hasPlusOne = booking.hasPlusOne === "true" || booking.hasPlusOne === true;
                 return count + (hasPlusOne ? 2 : 1);
             }, 0);
 
-            // Get capacity from meetup, default to 6 if not set
             const capacity = meetup.capacity ?? 6;
 
             return {
                 ...meetup,
-                attendees: confirmedBookings || [],
+                attendees: meetupBookings,
                 attendeeCount: totalAttendees,
                 capacity,
                 isFull: totalAttendees >= capacity,
             };
-        })
-    );
+        });
 
-    // Calculate hasMultipleTables for each meetup
-    // We do this by checking if there are other meetups at the same location and time
-    const result = meetupsWithAttendees.map((meetup) => {
-        const siblings = meetupsWithAttendees.filter((m) =>
-            m.locationId === meetup.locationId &&
-            m.date === meetup.date &&
-            m.time === meetup.time &&
-            m.id !== meetup.id
-        );
+        // 4. Calculate hasMultipleTables for each meetup
+        return meetupsWithAttendees.map((meetup: typeof meetupsWithAttendees[number]) => {
+            const siblings = meetupsWithAttendees.filter((m: typeof meetupsWithAttendees[number]) =>
+                m.locationId === meetup.locationId &&
+                m.date === meetup.date &&
+                m.time === meetup.time &&
+                m.id !== meetup.id
+            );
 
-        return {
-            ...meetup,
-            hasMultipleTables: siblings.length > 0,
-            tableName: (meetup as any).tableName || "Table 1" // Ensure fallback
-        };
-    });
-
-    return result;
-}
+            return {
+                ...meetup,
+                hasMultipleTables: siblings.length > 0,
+                tableName: (meetup as any).tableName || "Table 1"
+            };
+        });
+    },
+    ["upcoming-meetups"],
+    { revalidate: 300, tags: ["meetups"] }
+);
 
 /**
  * Check if a meetup is full (has reached capacity, including +1s)
