@@ -42,6 +42,17 @@ async function sendEmail(to: string, subject: string, html: string) {
     }
 }
 
+/**
+ * Centrally formats the location name to include the table name
+ * only if there are multiple tables.
+ */
+function formatLocationName(locationName: string, tableName?: string, hasMultipleTables?: boolean): string {
+    if (hasMultipleTables && tableName && tableName !== "Table 1") {
+        return `${locationName} (${tableName})`;
+    }
+    return locationName;
+}
+
 export async function sendBookingConfirmation(details: {
     to: string;
     userName: string;
@@ -51,6 +62,7 @@ export async function sendBookingConfirmation(details: {
     locationAddress: string;
     locationCity: string;
     tableName?: string;
+    hasMultipleTables?: boolean;
 }) {
     // Check if location should be revealed based on event date
     const today = new Date();
@@ -67,6 +79,7 @@ export async function sendBookingConfirmation(details: {
         "Your Coffee Meetup is Confirmed! ☕",
         bookingConfirmationHTML({
             ...details,
+            locationName: formatLocationName(details.locationName, details.tableName, details.hasMultipleTables),
             shouldRevealLocation,
         })
     );
@@ -80,11 +93,15 @@ export async function sendCancellationConfirmation(details: {
     locationName: string;
     locationCity: string;
     tableName?: string;
+    hasMultipleTables?: boolean;
 }) {
     return sendEmail(
         details.to,
         "Your Coffee Meetup Reservation has been Cancelled",
-        cancellationConfirmationHTML(details)
+        cancellationConfirmationHTML({
+            ...details,
+            locationName: formatLocationName(details.locationName, details.tableName, details.hasMultipleTables),
+        })
     );
 }
 
@@ -97,10 +114,14 @@ export async function sendReminderEmail(details: {
     locationAddress: string;
     locationCity: string;
     tableName?: string;
+    hasMultipleTables?: boolean;
 }) {
     return sendEmail(
         details.to,
         "Reminder: Your Coffee Meetup is in 2 days! ☕",
-        reminderEmailHTML(details)
+        reminderEmailHTML({
+            ...details,
+            locationName: formatLocationName(details.locationName, details.tableName, details.hasMultipleTables),
+        })
     );
 }

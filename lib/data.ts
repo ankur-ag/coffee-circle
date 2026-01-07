@@ -498,10 +498,18 @@ export async function getEventsWithAttendees(daysFromNow: number = 2) {
                 }
             }
 
+            const siblings = targetMeetups.filter((m: any) =>
+                m.locationId === meetup.locationId &&
+                m.date === meetup.date &&
+                m.time === meetup.time &&
+                m.id !== meetup.id
+            );
+
             return {
                 ...meetup,
                 location,
                 bookings: bookingsWithUsers,
+                hasMultipleTables: siblings.length > 0,
             };
         })
     );

@@ -2,7 +2,7 @@
 
 import { getDb } from "@/lib/db";
 import { bookings, users, feedback, meetups, coffeeShops } from "@/lib/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 import { isBookingActive, isMeetupInFuture, isMeetupFull } from "@/lib/data";
 
 import { revalidatePath } from "next/cache";
@@ -147,9 +147,27 @@ export async function bookMeetup(formData: FormData) {
             }
         }
 
+        // Check if there are multiple tables for this event (Edge Runtime)
+        let hasMultipleTables = false;
+        try {
+            const siblings = await db
+                .select({ id: meetups.id })
+                .from(meetups)
+                .where(and(
+                    eq(meetups.date, meetupData.date),
+                    eq(meetups.locationId, meetupData.locationId),
+                    eq(meetups.time, meetupData.time),
+                    ne(meetups.id, meetupData.id)
+                )) as any[];
+            hasMultipleTables = siblings.length > 0;
+        } catch (siblingError) {
+            console.warn("Failed to fetch sibling meetups:", siblingError);
+        }
+
         const meetup = {
             ...meetupData,
             location,
+            hasMultipleTables,
         } as any;
 
         if (!isMeetupInFuture(meetup)) {
@@ -203,6 +221,7 @@ export async function bookMeetup(formData: FormData) {
                     locationAddress: meetup.location?.location || "TBD",
                     locationCity: meetup.location?.city || "TBD",
                     tableName: (meetup as any).tableName,
+                    hasMultipleTables: (meetup as any).hasMultipleTables,
                 });
             }
         } catch (emailError) {
