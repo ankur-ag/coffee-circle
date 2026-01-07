@@ -144,7 +144,7 @@ export const getUpcomingMeetups = unstable_cache(
         const db = getDb();
         const todayStr = new Date().toISOString().split("T")[0];
 
-        // 1. Get the 2 most recent upcoming meetups in a single query
+        // 1. Get up to 10 upcoming meetups in a single query to allow for availability-based filtering
         const upcomingMeetups = await db
             .select()
             .from(meetups)
@@ -153,7 +153,7 @@ export const getUpcomingMeetups = unstable_cache(
                 gte(meetups.date, todayStr)
             ))
             .orderBy(asc(meetups.date))
-            .limit(2);
+            .limit(10);
 
         if (upcomingMeetups.length === 0) return [];
 
@@ -189,7 +189,7 @@ export const getUpcomingMeetups = unstable_cache(
         });
 
         // 4. Calculate hasMultipleTables for each meetup
-        return meetupsWithAttendees.map((meetup: typeof meetupsWithAttendees[number]) => {
+        const meetupsWithTableInfo = meetupsWithAttendees.map((meetup: typeof meetupsWithAttendees[number]) => {
             const siblings = meetupsWithAttendees.filter((m: typeof meetupsWithAttendees[number]) =>
                 m.locationId === meetup.locationId &&
                 m.date === meetup.date &&
@@ -203,6 +203,17 @@ export const getUpcomingMeetups = unstable_cache(
                 tableName: (meetup as any).tableName || "Table 1"
             };
         });
+
+        // 5. Prioritize meetups with available spots, then sort by date
+        // Return only the top 2 as intended for the UI
+        return meetupsWithTableInfo
+            .sort((a: any, b: any) => {
+                // If one is full and other isn't, show available first
+                if (a.isFull !== b.isFull) return a.isFull ? 1 : -1;
+                // Otherwise sort by date
+                return a.date.localeCompare(b.date);
+            })
+            .slice(0, 2);
     },
     ["upcoming-meetups"],
     { revalidate: 300, tags: ["meetups"] }

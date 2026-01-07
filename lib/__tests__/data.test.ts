@@ -7,6 +7,11 @@ vi.mock("../db", () => ({
     getDb: vi.fn(),
 }));
 
+// Mock next/cache for unstable_cache
+vi.mock("next/cache", () => ({
+    unstable_cache: (cb: any) => cb,
+}));
+
 describe("hasActiveBooking", () => {
     let mockSelect: any;
     let mockFrom: any;
@@ -1188,6 +1193,110 @@ describe("getUnratedPastBooking - Feedback Loop Prevention", () => {
 
         // Should return the second event since first already has feedback
         expect(result).toBe("booking-2");
+    });
+});
+
+describe("getUpcomingMeetups", () => {
+    let mockSelect: any;
+    let mockFrom: any;
+    let mockWhere: any;
+    let mockOrderBy: any;
+    let mockLimit: any;
+    let mockDb: any;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockLimit = vi.fn();
+        mockOrderBy = vi.fn().mockImplementation(() => {
+            const res: any = Promise.resolve([]);
+            res.limit = mockLimit;
+            return res;
+        });
+        mockWhere = vi.fn().mockImplementation(() => {
+            const res: any = Promise.resolve([]);
+            res.orderBy = mockOrderBy;
+            return res;
+        });
+        mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
+        mockSelect = vi.fn().mockReturnValue({ from: mockFrom });
+        mockDb = { select: mockSelect };
+        (getDb as any).mockReturnValue(mockDb);
+    });
+
+    it("should prioritize available meetups over full ones", async () => {
+        const todayStr = new Date().toISOString().split("T")[0];
+
+        // Mock 3 meetups: 
+        // 1. Tomorrow, FULL (m1)
+        // 2. Tomorrow, AVAILABLE (m2)
+        // 3. Next week, AVAILABLE (m3)
+        const mockMeetups = [
+            { id: "m1", date: todayStr, capacity: 2, locationId: "loc1", time: "10:00" },
+            { id: "m2", date: todayStr, capacity: 6, locationId: "loc1", time: "14:00" },
+            { id: "m3", date: "2099-01-01", capacity: 6, locationId: "loc2", time: "10:00" },
+        ];
+
+        // First call to db.select().from(meetups)... terminates at .limit(10)
+        mockLimit.mockResolvedValueOnce(mockMeetups);
+
+        // Mock bookings: m1 is full (2 attendees)
+        const mockBookings = [
+            { id: "b1", meetupId: "m1", status: "confirmed", hasPlusOne: "false" },
+            { id: "b2", meetupId: "m1", status: "confirmed", hasPlusOne: "false" },
+        ];
+
+        // The bookings query terminates at .where()
+        // We need to ensure the first where() call for meetups remains chainable
+        mockWhere
+            .mockImplementationOnce(() => {
+                const res: any = Promise.resolve([]);
+                res.orderBy = mockOrderBy;
+                return res;
+            })
+            .mockResolvedValueOnce(mockBookings);
+
+        const { getUpcomingMeetups } = await import("../data");
+        const result = await getUpcomingMeetups();
+
+        // Should return m2 (Available, soonest) and m3 (Available, later)
+        // because m1 is Full.
+        expect(result).toHaveLength(2);
+        expect(result[0].id).toBe("m2");
+        expect(result[1].id).toBe("m3");
+    });
+
+    it("should show full meetups if no available meetups exist", async () => {
+        const todayStr = new Date().toISOString().split("T")[0];
+
+        const mockMeetups = [
+            { id: "m1", date: todayStr, capacity: 1, locationId: "loc1", time: "10:00" },
+            { id: "m2", date: todayStr, capacity: 1, locationId: "loc1", time: "14:00" },
+        ];
+
+        mockLimit.mockResolvedValueOnce(mockMeetups);
+
+        // Both are full
+        const mockBookings = [
+            { id: "b1", meetupId: "m1", status: "confirmed", hasPlusOne: "false" },
+            { id: "b2", meetupId: "m2", status: "confirmed", hasPlusOne: "false" },
+        ];
+
+        mockWhere
+            .mockImplementationOnce(() => {
+                const res: any = Promise.resolve([]);
+                res.orderBy = mockOrderBy;
+                return res;
+            })
+            .mockResolvedValueOnce(mockBookings);
+
+        const { getUpcomingMeetups } = await import("../data");
+        const result = await getUpcomingMeetups();
+
+        expect(result).toHaveLength(2);
+        expect(result[0].id).toBe("m1");
+        expect(result[1].id).toBe("m2");
+        expect(result[0].isFull).toBe(true);
+        expect(result[1].isFull).toBe(true);
     });
 });
 
