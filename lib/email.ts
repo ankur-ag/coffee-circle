@@ -100,7 +100,7 @@ export async function sendReminderEmail(details: {
 }) {
     return sendEmail(
         details.to,
-        "Reminder: Your Coffee Meetup is Tomorrow! ☕",
+        "Reminder: Your Coffee Meetup is in 2 days! ☕",
         reminderEmailHTML(details)
     );
 }
