@@ -31,7 +31,6 @@ export function bookingConfirmationHTML(details: {
       <h2 style="margin-top: 0; color: #667eea; font-size: 20px;">Event Details</h2>
       <p style="margin: 10px 0;"><strong>📅 Date:</strong> ${details.eventDate}</p>
       <p style="margin: 10px 0;"><strong>🕐 Time:</strong> ${details.eventTime}</p>
-      ${details.tableName && details.tableName !== "Table 1" ? `<p style="margin: 10px 0;"><strong>🪑 Table:</strong> ${details.tableName}</p>` : ''}
       ${revealLocation ? `
       <p style="margin: 10px 0;"><strong>📍 Location:</strong> ${details.locationName}</p>
       <p style="margin: 10px 0;"><strong>🏙️ City:</strong> ${details.locationCity}</p>
@@ -92,7 +91,6 @@ export function cancellationConfirmationHTML(details: {
       <h2 style="margin-top: 0; color: #f59e0b; font-size: 20px;">Cancelled Event</h2>
       <p style="margin: 10px 0;"><strong>📅 Date:</strong> ${details.eventDate}</p>
       <p style="margin: 10px 0;"><strong>🕐 Time:</strong> ${details.eventTime}</p>
-      ${details.tableName && details.tableName !== "Table 1" ? `<p style="margin: 10px 0;"><strong>🪑 Table:</strong> ${details.tableName}</p>` : ''}
       <p style="margin: 10px 0;"><strong>📍 Location:</strong> ${details.locationName}</p>
       <p style="margin: 10px 0;"><strong>🏙️ City:</strong> ${details.locationCity}</p>
     </div>
@@ -144,7 +142,6 @@ export function reminderEmailHTML(details: {
       <h2 style="margin-top: 0; color: #f59e0b; font-size: 20px;">Event Details</h2>
       <p style="margin: 10px 0;"><strong>📅 Date:</strong> ${details.eventDate}</p>
       <p style="margin: 10px 0;"><strong>🕐 Time:</strong> ${details.eventTime}</p>
-      ${details.tableName && details.tableName !== "Table 1" ? `<p style="margin: 10px 0;"><strong>🪑 Table:</strong> ${details.tableName}</p>` : ''}
       <p style="margin: 10px 0;"><strong>📍 Location:</strong> ${details.locationName}</p>
       <p style="margin: 10px 0;"><strong>🏙️ City:</strong> ${details.locationCity}</p>
       <p style="margin: 10px 0;"><strong>🗺️ Address:</strong> ${details.locationAddress}</p>
