@@ -32,8 +32,9 @@ export default async function NewEventPage() {
                     <input
                         type="time"
                         name="time"
+                        defaultValue="14:00"
                         required
-                        className="w-full border border-border rounded px-3 py-2"
+                        className="w-full border border-border rounded px-3 py-2 bg-background text-foreground"
                     />
                 </div>
 
