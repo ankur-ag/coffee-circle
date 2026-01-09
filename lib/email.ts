@@ -120,7 +120,7 @@ export async function sendReminderEmail(details: {
     const isToday = details.daysUntil === 0;
     const subject = isToday
         ? "Reminder: Your Coffee Meetup is Today! ☕"
-        : `Reminder: Your Coffee Meetup is in ${details.daysUntil || 2} days! ☕`;
+        : `Reminder: Your Coffee Meetup is in ${details.daysUntil ?? 2} days! ☕`;
 
     return sendEmail(
         details.to,

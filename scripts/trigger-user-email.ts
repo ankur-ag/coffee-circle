@@ -75,6 +75,7 @@ async function triggerRealEmail() {
             locationCity: event.location?.city || "TBD",
             tableName: "Table 2",
             hasMultipleTables: true,
+            daysUntil: 0,
         });
 
         if (result.success) {
