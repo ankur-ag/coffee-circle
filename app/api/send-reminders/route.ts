@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getEventsWithAttendees } from "@/lib/data";
 import { sendReminderEmail } from "@/lib/email";
-import { REMINDER_EMAIL_DAYS } from "@/lib/config";
+import { REMINDER_EMAIL_DAYS, SAME_DAY_REMINDER_DAYS } from "@/lib/config";
 import { format } from "date-fns";
 
 // Use Node.js runtime for better database connection performance
@@ -20,65 +20,68 @@ export async function GET(request: Request) {
     }
 
     try {
-        console.log(`Starting reminder email process for events ${REMINDER_EMAIL_DAYS} days from now...`);
+        const daysToProcess = [REMINDER_EMAIL_DAYS, SAME_DAY_REMINDER_DAYS];
+        console.log(`Starting reminder email process for day offsets: ${daysToProcess.join(", ")}`);
 
-        // Get all events happening in REMINDER_EMAIL_DAYS with their attendees
-        const targetEvents = await getEventsWithAttendees(REMINDER_EMAIL_DAYS);
+        let totalEmailsSent = 0;
+        let totalEmailsFailed = 0;
+        let totalEventsProcessed = 0;
 
-        if (targetEvents.length === 0) {
-            console.log(`No events found for ${REMINDER_EMAIL_DAYS} days from now`);
-            return NextResponse.json({
-                success: true,
-                message: `No events found for ${REMINDER_EMAIL_DAYS} days from now`,
-                emailsSent: 0
-            });
-        }
+        for (const days of daysToProcess) {
+            console.log(`Processing reminders for ${days} days from now...`);
+            const targetEvents = await getEventsWithAttendees(days);
 
-        let emailsSent = 0;
-        let emailsFailed = 0;
+            if (targetEvents.length === 0) {
+                console.log(`No events found for ${days} days from now`);
+                continue;
+            }
 
-        // Send reminder emails for each event
-        for (const event of targetEvents) {
-            console.log(`Processing event: ${event.date} at ${event.time} (${event.bookings.length} bookings)`);
+            totalEventsProcessed += targetEvents.length;
 
-            for (const booking of event.bookings) {
-                const user = booking.user;
+            // Send reminder emails for each event
+            for (const event of targetEvents) {
+                console.log(`Processing event: ${event.date} at ${event.time} (${event.bookings.length} bookings)`);
 
-                if (!user?.email || !user?.name) {
-                    console.warn(`Skipping booking ${booking.id} - missing user email or name`);
-                    continue;
-                }
+                for (const booking of event.bookings) {
+                    const user = booking.user;
 
-                try {
-                    await sendReminderEmail({
-                        to: user.email,
-                        userName: user.name,
-                        eventDate: format(new Date(event.date), "EEEE, MMMM d, yyyy"),
-                        eventTime: event.time,
-                        locationName: event.location?.name || "TBD",
-                        locationAddress: event.location?.location || "TBD",
-                        locationCity: event.location?.city || "TBD",
-                        tableName: event.tableName,
-                        hasMultipleTables: (event as any).hasMultipleTables,
-                    });
+                    if (!user?.email || !user?.name) {
+                        console.warn(`Skipping booking ${booking.id} - missing user email or name`);
+                        continue;
+                    }
 
-                    emailsSent++;
-                    console.log(`✓ Sent reminder to ${user.email}`);
-                } catch (error) {
-                    emailsFailed++;
-                    console.error(`Failed to send reminder to ${user.email}:`, error);
+                    try {
+                        await sendReminderEmail({
+                            to: user.email,
+                            userName: user.name,
+                            eventDate: format(new Date(event.date), "EEEE, MMMM d, yyyy"),
+                            eventTime: event.time,
+                            locationName: event.location?.name || "TBD",
+                            locationAddress: event.location?.location || "TBD",
+                            locationCity: event.location?.city || "TBD",
+                            tableName: event.tableName,
+                            hasMultipleTables: (event as any).hasMultipleTables,
+                            daysUntil: days,
+                        });
+
+                        totalEmailsSent++;
+                        console.log(`✓ Sent reminder to ${user.email}`);
+                    } catch (error) {
+                        totalEmailsFailed++;
+                        console.error(`Failed to send reminder to ${user.email}:`, error);
+                    }
                 }
             }
         }
 
-        console.log(`Reminder email process completed. Sent: ${emailsSent}, Failed: ${emailsFailed}`);
+        console.log(`Reminder email process completed. Total Sent: ${totalEmailsSent}, Failed: ${totalEmailsFailed}`);
 
         return NextResponse.json({
             success: true,
             message: "Reminder emails processed",
-            emailsSent,
-            emailsFailed,
-            eventsProcessed: targetEvents.length,
+            emailsSent: totalEmailsSent,
+            emailsFailed: totalEmailsFailed,
+            eventsProcessed: totalEventsProcessed,
         });
     } catch (error) {
         console.error("Error processing reminder emails:", error);

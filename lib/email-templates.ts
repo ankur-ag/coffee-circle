@@ -119,7 +119,9 @@ export function reminderEmailHTML(details: {
   locationAddress: string;
   locationCity: string;
   tableName?: string;
+  daysUntil?: number;
 }) {
+  const isToday = details.daysUntil === 0;
   return `
 <!DOCTYPE html>
 <html>
@@ -130,13 +132,13 @@ export function reminderEmailHTML(details: {
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
   <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-    <h1 style="color: white; margin: 0; font-size: 28px;">☕ Reminder: Your Coffee Meetup is Coming Up!</h1>
+    <h1 style="color: white; margin: 0; font-size: 28px;">☕ Reminder: Your Coffee Meetup is ${isToday ? 'Today' : 'Coming Up'}!</h1>
   </div>
   
   <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
     <p style="font-size: 16px; margin-bottom: 20px;">Hi ${details.userName},</p>
     
-    <p style="font-size: 16px; margin-bottom: 25px;">Just a friendly reminder that your coffee meetup is happening soon! We're looking forward to seeing you there.</p>
+    <p style="font-size: 16px; margin-bottom: 25px;">${isToday ? "It's coffee time! Just a friendly reminder that your meetup is happening today." : "Just a friendly reminder that your coffee meetup is happening soon! We're looking forward to seeing you there."}</p>
     
     <div style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 25px;">
       <h2 style="margin-top: 0; color: #f59e0b; font-size: 20px;">Event Details</h2>

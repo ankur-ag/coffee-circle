@@ -14,3 +14,8 @@ export const LOCATION_REVEAL_DAYS: number = 2;
  */
 export const REMINDER_EMAIL_DAYS: number = 2;
 
+/**
+ * Number of days before the event when the same-day reminder should be sent (0 = day of event)
+ */
+export const SAME_DAY_REMINDER_DAYS: number = 0;
+

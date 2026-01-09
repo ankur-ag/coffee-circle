@@ -115,10 +115,16 @@ export async function sendReminderEmail(details: {
     locationCity: string;
     tableName?: string;
     hasMultipleTables?: boolean;
+    daysUntil?: number;
 }) {
+    const isToday = details.daysUntil === 0;
+    const subject = isToday
+        ? "Reminder: Your Coffee Meetup is Today! ☕"
+        : `Reminder: Your Coffee Meetup is in ${details.daysUntil || 2} days! ☕`;
+
     return sendEmail(
         details.to,
-        "Reminder: Your Coffee Meetup is in 2 days! ☕",
+        subject,
         reminderEmailHTML({
             ...details,
             locationName: formatLocationName(details.locationName, details.tableName, details.hasMultipleTables),
