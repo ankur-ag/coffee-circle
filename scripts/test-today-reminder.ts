@@ -1,8 +1,7 @@
 import { config } from "dotenv";
 config({ path: ".env.local" });
 
-import { drizzle } from "drizzle-orm/vercel-postgres";
-import { sql } from "@vercel/postgres";
+import { getDb } from "../lib/db";
 import { meetups, coffeeShops, bookings, users } from "../lib/schema";
 import { eq, and } from "drizzle-orm";
 import * as schema from "../lib/schema";
@@ -10,7 +9,7 @@ import * as schema from "../lib/schema";
 async function testTodayReminder() {
     console.log("Setting up data for SAME-DAY reminder testing...");
 
-    const db = drizzle(sql, { schema });
+    const db = getDb();
 
     // 1. Get a location
     const locations = await db.select().from(coffeeShops).limit(1);
@@ -90,7 +89,7 @@ async function testTodayReminder() {
     process.exit(0);
 }
 
-testTodayReminder().catch(err => {
+testTodayReminder().catch((err: any) => {
     console.error(err);
     process.exit(1);
 });

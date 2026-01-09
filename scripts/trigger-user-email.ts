@@ -1,8 +1,7 @@
 import { config } from "dotenv";
 config({ path: ".env.local" });
 
-import { drizzle } from "drizzle-orm/vercel-postgres";
-import { sql } from "@vercel/postgres";
+import { getDb } from "../lib/db";
 import { meetups, coffeeShops, bookings, users } from "../lib/schema";
 import { sendReminderEmail } from "../lib/email";
 import { eq, and } from "drizzle-orm";
@@ -12,7 +11,7 @@ import { format } from "date-fns";
 async function triggerRealEmail() {
     console.log("Preparing to trigger a real reminder email...");
 
-    const db = drizzle(sql, { schema });
+    const db = getDb();
 
     // 1. Get the target user
     const userEmail = "outlaws01@gmail.com";

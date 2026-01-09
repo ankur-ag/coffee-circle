@@ -441,9 +441,10 @@ export async function getEventsWithAttendees(daysFromNow: number = 2) {
     const db = getDb();
 
     // Calculate target date (N days from today)
-    const targetDate = new Date();
+    const now = new Date();
+    const targetDate = new Date(now);
     targetDate.setDate(targetDate.getDate() + daysFromNow);
-    targetDate.setHours(0, 0, 0, 0);
+    targetDate.setUTCHours(0, 0, 0, 0);
 
     const targetDateStr = targetDate.toISOString().split("T")[0];
 
@@ -452,12 +453,11 @@ export async function getEventsWithAttendees(daysFromNow: number = 2) {
         .select()
         .from(meetups) as any[];
 
-    // Filter for target date
-    const targetMeetups = allMeetups.filter((meetup: any) => meetup.date === targetDateStr);
+    const targetEvents = allMeetups.filter((meetup: any) => meetup.date === targetDateStr);
 
     // For each meetup, get confirmed bookings with user details
     const meetupsWithBookings = await Promise.all(
-        targetMeetups.map(async (meetup: any) => {
+        targetEvents.map(async (meetup: any) => {
             // Use standard select for Edge Runtime compatibility
             const confirmedBookings = await db
                 .select()
@@ -498,7 +498,7 @@ export async function getEventsWithAttendees(daysFromNow: number = 2) {
                 }
             }
 
-            const siblings = targetMeetups.filter((m: any) =>
+            const siblings = targetEvents.filter((m: any) =>
                 m.locationId === meetup.locationId &&
                 m.date === meetup.date &&
                 m.time === meetup.time &&
