@@ -66,6 +66,10 @@ export async function GET(request: Request) {
 
                         totalEmailsSent++;
                         console.log(`✓ Sent reminder to ${user.email}`);
+
+                        // Add a small delay between emails to avoid Resend API rate limits (2 reqs/sec)
+                        // Wait for 500ms before next request
+                        await new Promise(resolve => setTimeout(resolve, 500));
                     } catch (error) {
                         totalEmailsFailed++;
                         console.error(`Failed to send reminder to ${user.email}:`, error);
